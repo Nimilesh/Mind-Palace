@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mind Palace OS</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        body { background-color: #000; color: #e4e4e7; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .safe-top { padding-top: env(safe-area-inset-top); }
+        .markdown-body ul { list-style-type: disc; margin-left: 1.5em; }
+        .markdown-body ol { list-style-type: decimal; margin-left: 1.5em; }
+        .construct-anim { animation: float 6s ease-in-out infinite; }
+        .pulse-slow { animation: pulse-glow 4s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+        @keyframes pulse-glow { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+        .glass-panel { background: rgba(24, 24, 27, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+        const apiKey = ""; // System injected key
+
+        // --- UTILS ---
+        const generateUUID = () => {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+
+        const formatDate = (iso) => {
+            const d = new Date(iso);
+            return {
+                year: d.getFullYear().toString(),
+                month: d.toLocaleString('default', { month: 'long' }),
+                day: d.getDate().toString()
+            };
+        };
+
+        const getGreeting = () => {
+            const hour = new Date().getHours();
+            if (hour < 5) return "Late Night Reflection";
+            if (hour < 12) return "Morning Protocol";
+            if (hour < 17) return "Afternoon Focus";
+            return "Evening Review";
+        };
+
+        // --- ICONS ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const icons = {
+                Brain: <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/>,
+                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1 1.275-1.275L12 3Z"/>,
+                Trash2: <g><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></g>,
+                Plus: <path d="M5 12h14 M12 5v14"/>,
+                Settings: <g><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g>,
+                Download: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></g>,
+                Upload: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></g>,
+                CheckCircle: <g><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></g>,
+                X: <g><path d="M18 6 6 18"/><path d="M6 6 18 18"/></g>,
+                Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>,
+                ArrowLeft: <g><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></g>,
+                ChevronLeft: <path d="m15 18-6-6 6-6"/>,
+                ChevronRight: <path d="m9 18 6-6-6-6"/>,
+                Pen: <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>,
+                Grid: <g><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></g>,
+                Folder: <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>,
+                FolderOpen: <g><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></g>,
+                Refresh: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>,
+                CornerDownRight: <g><polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></g>,
+                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+                Send: <g><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></g>,
+                Search: <g><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></g>,
+                Tag: <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"/>,
+                Target: <g><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></g>,
+                Save: <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8"/>,
+                Clock: <g><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></g>,
+                User: <g><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></g>,
+                Calendar: <g><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></g>,
+                Alert: <g><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></g>,
+                Home: <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>,
+                Sun: <g><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></g>,
+                Moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>,
+                List: <g><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></g>
+            };
+            return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
+        };
+
+        // --- DB & API ---
+        const DB_NAME='MindPalaceDB', STORE='thoughts', META_STORE='meta';
+        const dbOps = {
+            init: () => new Promise((res, rej) => {
+                // Version 3 forces a clean update to ensure stores exist
+                const req = indexedDB.open(DB_NAME, 3); 
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, {keyPath:'id'});
+                    if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE, {keyPath:'id'});
+                };
+                req.onsuccess = () => res(req.result);
+                req.onerror = () => rej(req.error);
+                req.onblocked = () => {
+                    alert("Please close other tabs of this app to update the database.");
+                    rej(new Error("Database blocked"));
+                };
+            }),
+            add: async (item) => { const db=await dbOps.init(); const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(item); return new Promise(r=>tx.oncomplete=r); },
+            getAll: async () => { const db=await dbOps.init(); return new Promise(r=>{const req=db.transaction(STORE,'readonly').objectStore(STORE).getAll(); req.onsuccess=()=>r(req.result.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)))}); },
+            del: async (id) => { const db=await dbOps.init(); const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(id); return new Promise(r=>tx.oncomplete=r); },
+            saveMeta: async (id, data) => { const db=await dbOps.init(); const tx=db.transaction(META_STORE,'readwrite'); tx.objectStore(META_STORE).put({id, data}); return new Promise(r=>tx.oncomplete=r); },
+            getMeta: async (id) => { const db=await dbOps.init(); return new Promise(r=>{const req=db.transaction(META_STORE,'readonly').objectStore(META_STORE).get(id); req.onsuccess=()=>r(req.result?.data);}); },
+            export: async () => { 
+                const d=await dbOps.getAll(); 
+                const p = await dbOps.getMeta('user_profile');
+                const exportData = { thoughts: d, profile: p };
+                const a=document.createElement('a');
+                a.href=URL.createObjectURL(new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'}));
+                a.download=`mind_palace_full_${new Date().toISOString().split('T')[0]}.json`;
+                a.click(); 
+            },
+            import: async (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            const raw = JSON.parse(e.target.result);
+                            const items = Array.isArray(raw) ? raw : raw.thoughts;
+                            if(!Array.isArray(items)) throw new Error("Invalid File");
+                            for(const item of items) await dbOps.add(item);
+                            if(raw.profile) await dbOps.saveMeta('user_profile', raw.profile);
+                            resolve(items.length);
+                        } catch(err) { reject(err); }
+                    };
+                    reader.readAsText(file);
+                });
+            }
+        };
+
+        const callGemini = async (key, txt, sys, jsonMode = false) => {
+            const payload = { 
+                contents:[{parts:[{text:txt}]}], 
+                systemInstruction:{parts:[{text:sys}]} 
+            };
+            if (jsonMode) payload.generationConfig = { responseMimeType: "application/json" };
+
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            let lastError;
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+                    const d = await res.json();
+                    return d.candidates?.[0]?.content?.parts?.[0]?.text || "Error.";
+                } catch (e) {
+                    lastError = e;
+                    if (i < delays.length) await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+            throw lastError;
+        };
+
+        // --- COMPONENTS ---
+        const LoadingScreen = ({ message }) => {
+            return (
+                <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black">
+                    <div className="w-48 h-48 relative flex items-center justify-center construct-anim">
+                        <svg viewBox="0 0 100 100" className="w-full h-full text-blue-500 pulse-slow" style={{color: '#3b82f6'}}>
+                             <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="0.5" fill="none" className="opacity-20"/>
+                             <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="1" fill="none" className="opacity-40"/>
+                             <path d="M50 10 L50 90 M10 50 L90 50" stroke="currentColor" strokeWidth="0.5" className="opacity-20"/>
+                             <circle cx="50" cy="50" r="15" stroke="currentColor" strokeWidth="2" fill="none"/>
+                             <circle cx="50" cy="50" r="5" fill="currentColor"/>
+                             {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+                                 <line key={deg} x1="50" y1="50" x2="50" y2="20" stroke="currentColor" strokeWidth="1" transform={`rotate(${deg} 50 50)`} className="opacity-30" />
+                             ))}
+                        </svg>
+                    </div>
+                    <div className="mt-8 font-mono text-xs tracking-[0.3em] uppercase animate-pulse text-blue-400">{message}</div>
+                </div>
+            );
+        };
+
+        const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-zinc-900 border border-zinc-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center text-red-500">
+                                <Icon name="Alert" size={24} />
+                            </div>
+                            <h3 className="text-lg font-bold text-white">Are you sure?</h3>
+                            <p className="text-zinc-400 text-sm">{message}</p>
+                            <div className="flex gap-3 w-full pt-2">
+                                <button onClick={onCancel} className="flex-1 py-3 rounded-xl bg-zinc-800 text-white font-semibold hover:bg-zinc-700 transition-colors">Cancel</button>
+                                <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const MarkdownRenderer = ({ content }) => {
+            if (!content) return null;
+            return (
+                <div className="space-y-4">
+                    {content.split('\n').map((line, i) => {
+                        if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold text-blue-300 mt-6 mb-2">{line.replace('### ', '')}</h3>;
+                        if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-blue-400 mt-8 mb-3 border-b border-zinc-800 pb-2">{line.replace('## ', '')}</h2>;
+                        if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold text-white mt-8 mb-4">{line.replace('# ', '')}</h1>;
+                        if (line.trim().startsWith('- ')) return <div key={i} className="flex gap-2 ml-4 text-zinc-300"><span className="text-zinc-500">•</span><span>{line.replace('- ', '')}</span></div>;
+                        if (line.trim().match(/^\d+\./)) return <div key={i} className="flex gap-2 ml-4 text-zinc-300"><span className="text-zinc-500 font-mono">{line.split('.')[0]}.</span><span>{line.replace(/^\d+\.\s/, '')}</span></div>;
+                        if (!line.trim()) return <div key={i} className="h-2"></div>;
+                        const parts = line.split(/(\*\*.*?\*\*)/g);
+                        return (
+                            <p key={i} className="text-zinc-300 leading-relaxed">
+                                {parts.map((part, j) => {
+                                    if (part.startsWith('**') && part.endsWith('**')) return <span key={j} className="font-bold text-zinc-100">{part.slice(2, -2)}</span>;
+                                    return part;
+                                })}
+                            </p>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        const TheConstruct = ({ count }) => {
+            const safeCount = typeof count === 'number' ? count : 0;
+            const complexity = Math.min(safeCount, 50);
+            const color = safeCount < 10 ? '#3b82f6' : safeCount < 30 ? '#8b5cf6' : '#ec4899';
+            return (
+                <div className="w-32 h-32 relative flex items-center justify-center construct-anim">
+                    <svg viewBox="0 0 100 100" className="w-full h-full opacity-80" style={{color}}>
+                        <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="1" fill="none" className="opacity-20"/>
+                        <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="1" fill="none" className="opacity-40"/>
+                        <circle cx="50" cy="50" r="20" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        {[...Array(Math.max(0, Math.floor(complexity/2)))].map((_,i) => <path key={i} d={`M50 50 L${50 + Math.cos(i)*45} ${50 + Math.sin(i)*45}`} stroke="currentColor" strokeWidth="0.5" className="opacity-30"/>)}
+                    </svg>
+                    <div className="absolute text-xs font-mono text-zinc-500 bg-black px-2 py-1 border border-zinc-800 rounded">Lvl {Math.floor(safeCount/5)+1}</div>
+                </div>
+            );
+        };
+
+        const HomeView = ({ profile, briefing, onNavigate, stats }) => {
+            const timeOfDay = getGreeting();
+            const hasBriefing = briefing && briefing.date === new Date().toDateString();
+
+            return (
+                <div className="p-6 pb-40 overflow-y-auto h-full animate-in fade-in duration-500">
+                    <div className="mb-8 mt-4">
+                        <div className="flex items-center gap-3 mb-2 text-zinc-400">
+                            {timeOfDay.includes("Night") ? <Icon name="Moon" size={18}/> : <Icon name="Sun" size={18}/>}
+                            <span className="text-xs font-mono uppercase tracking-widest">{timeOfDay}</span>
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-1">
+                            Welcome back, {profile?.name || 'Architect'}.
+                        </h1>
+                        <p className="text-zinc-500 text-sm">
+                            System is active. {stats.todayCount} thoughts captured today.
+                        </p>
+                    </div>
+
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
+                                <Icon name="Brain" className="text-blue-500"/> Daily Briefing
+                            </h2>
+                            <span className="text-[10px] bg-zinc-900 border border-zinc-800 px-2 py-1 rounded text-zinc-500 font-mono">
+                                {hasBriefing ? 'ANALYSIS COMPLETE' : 'WAITING FOR DATA'}
+                            </span>
+                        </div>
+                        
+                        <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+                            
+                            {hasBriefing ? (
+                                <div className="space-y-6 relative z-10">
+                                    {briefing.focus && (
+                                        <div>
+                                            <div className="text-xs text-blue-400 font-bold uppercase mb-2">Prime Directive</div>
+                                            <p className="text-lg text-white font-medium leading-relaxed">{briefing.focus}</p>
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {briefing.loops && briefing.loops.length > 0 && (
+                                            <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                                                <div className="text-xs text-orange-400 font-bold uppercase mb-2 flex gap-1 items-center"><Icon name="Refresh" size={12}/> Open Loops</div>
+                                                <ul className="space-y-2">
+                                                    {briefing.loops.map((loop, i) => (
+                                                        <li key={i} className="text-sm text-zinc-300 flex gap-2">
+                                                            <span className="text-zinc-600">•</span> {loop}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {briefing.trajectory && (
+                                            <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                                                <div className="text-xs text-purple-400 font-bold uppercase mb-2 flex gap-1 items-center"><Icon name="Target" size={12}/> Trajectory</div>
+                                                <p className="text-sm text-zinc-300 leading-relaxed">{briefing.trajectory}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-zinc-500 text-sm mb-4">Capture more thoughts to generate your Neural Report.</p>
+                                    <button onClick={() => onNavigate('capture')} className="bg-zinc-100 text-black px-4 py-2 rounded-lg text-sm font-bold hover:scale-105 transition-transform">Start Capturing</button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button onClick={() => onNavigate('capture')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
+                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="Pen" size={16}/></div>
+                            <div className="font-bold text-sm text-zinc-200">Quick Capture</div>
+                            <div className="text-xs text-zinc-500 mt-1">Log a thought</div>
+                        </button>
+                        <button onClick={() => onNavigate('memory')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
+                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="Grid" size={16}/></div>
+                            <div className="font-bold text-sm text-zinc-200">Memory Bank</div>
+                            <div className="text-xs text-zinc-500 mt-1">Review archives</div>
+                        </button>
+                        <button onClick={() => onNavigate('profile')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
+                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="User" size={16}/></div>
+                            <div className="font-bold text-sm text-zinc-200">The Mirror</div>
+                            <div className="text-xs text-zinc-500 mt-1">Self analysis</div>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const FullScreenReader = ({ thought, onClose, onNext, onPrev, hasNext, hasPrev, onUpdate, profile, requestConfirm }) => {
+            const [chatInput, setChatInput] = useState('');
+            const [isThinking, setIsThinking] = useState(false);
+            const [isEditing, setIsEditing] = useState(false);
+            const [editContent, setEditContent] = useState(thought?.content || '');
+            const [tagInput, setTagInput] = useState('');
+            const chatEndRef = useRef(null);
+            const [key, setKey] = useState('');
+
+            useEffect(() => { 
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+                setEditContent(thought?.content || '');
+                const k = localStorage.getItem('gemini_key') || (typeof apiKey !== 'undefined' ? apiKey : '');
+                setKey(k);
+            }, [thought?.chatLog, isThinking, thought]);
+
+            if (!thought) return null;
+
+            const handleBrainstorm = async () => {
+                if (!chatInput.trim()) return;
+                
+                if (!key) return alert("API Key missing");
+
+                setIsThinking(true);
+                const userMsg = { role: 'user', content: chatInput, time: new Date().toISOString() };
+                const newLog = [...(thought.chatLog || []), userMsg];
+                onUpdate({ ...thought, chatLog: newLog });
+                setChatInput('');
+
+                try {
+                    const context = `USER PROFILE: ${JSON.stringify(profile)}\n\nORIGINAL NOTE:\n${thought.content}\n\nUSER QUESTION:\n${chatInput}\n\nPREVIOUS CHAT:\n${(thought.chatLog || []).map(m => `${m.role}: ${m.content}`).join('\n')}`;
+                    const sysPrompt = `You are a "Lateral Thinking Engine".
+                    CRITICAL PROTOCOL: ADAPT TO USER INTENT.
+                    1. **Chatter Mode:** If user input is simple (e.g., "Thanks", "Okay", "Cool"), reply briefly and conversationally. Do NOT use a framework.
+                    2. **Analysis Mode:** If user asks a question or brainstorms, use a random framework (Inversion, Second-Order Thinking, First Principles).
+                    Output Format for Analysis: [Framework Name]: Answer. Use Markdown.`;
+                    
+                    const response = await callGemini(key, context, sysPrompt);
+                    const aiMsg = { role: 'ai', content: response, time: new Date().toISOString() };
+                    await dbOps.add({ ...thought, chatLog: [...newLog, aiMsg] });
+                    onUpdate({ ...thought, chatLog: [...newLog, aiMsg] });
+                } catch (e) { alert("Error: " + e.message); }
+                setIsThinking(false);
+            };
+
+            const deleteChatMsg = (index) => {
+                requestConfirm("Delete this message?", async () => {
+                    const newLog = thought.chatLog.filter((_, i) => i !== index);
+                    const updatedThought = { ...thought, chatLog: newLog };
+                    await dbOps.add(updatedThought);
+                    onUpdate(updatedThought);
+                });
+            };
+
+            const handleSaveEdit = async () => {
+                const updatedThought = {
+                    ...thought,
+                    content: editContent,
+                    updatedAt: new Date().toISOString(),
+                    editHistory: [...(thought.editHistory || []), { content: thought.content, date: new Date().toISOString() }]
+                };
+                await dbOps.add(updatedThought);
+                onUpdate(updatedThought);
+                setIsEditing(false);
+            };
+
+            const addTag = async () => {
+                if(!tagInput.trim()) return;
+                const newTags = [...(thought.tags || []), tagInput.trim()];
+                const updatedThought = { ...thought, tags: newTags };
+                await dbOps.add(updatedThought);
+                onUpdate(updatedThought);
+                setTagInput('');
+            };
+
+            const removeTag = (tagToRemove) => {
+                requestConfirm(`Remove tag #${tagToRemove}?`, async () => {
+                    const newTags = (thought.tags || []).filter(t => t !== tagToRemove);
+                    const updatedThought = { ...thought, tags: newTags };
+                    await dbOps.add(updatedThought);
+                    onUpdate(updatedThought);
+                });
+            };
+
+            return (
+                <div className="fixed inset-0 z-[60] bg-black flex flex-col animate-in slide-in-from-right duration-200">
+                    <div className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/50 safe-top shrink-0">
+                        <button onClick={onClose} className="p-2 -ml-2 text-zinc-400 hover:text-white flex items-center gap-1"><Icon name="ArrowLeft" /> <span className="text-sm font-semibold">Back</span></button>
+                        <div className="flex items-center gap-2">
+                            {isEditing ? <button onClick={handleSaveEdit} className="p-2 bg-blue-600 rounded-full text-white"><Icon name="Save" /></button> : <button onClick={() => setIsEditing(true)} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white"><Icon name="Pen" /></button>}
+                            <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${thought.type==='strategy'?'bg-blue-900/30 text-blue-400':thought.type==='raw'?'bg-zinc-800 text-zinc-400':thought.type==='refined'?'bg-green-900/30 text-green-400':'bg-purple-900/30 text-purple-400'}`}>{thought.type}</span>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto bg-black">
+                        <div className="p-6 border-b border-zinc-800">
+                            <div className="flex flex-wrap gap-4 text-zinc-500 text-xs mb-4 font-mono items-center">
+                                <span>Created: {new Date(thought.createdAt).toLocaleString()}</span>
+                                {thought.updatedAt && <span className="flex items-center gap-1 text-zinc-400"><Icon name="Clock" size={12}/> Edited: {new Date(thought.updatedAt).toLocaleDateString()} ({thought.editHistory?.length || 0})</span>}
+                            </div>
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {(thought.tags || []).map(tag => (
+                                    <span key={tag} className="px-2 py-1 bg-zinc-800 rounded text-xs text-zinc-300 flex items-center gap-1">#{tag} <button onClick={() => removeTag(tag)} className="hover:text-red-400"><Icon name="X" size={10}/></button></span>
+                                ))}
+                                <div className="flex items-center gap-1 bg-zinc-900 rounded border border-zinc-800 px-2"><Icon name="Tag" size={12} className="text-zinc-500"/><input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTag()} placeholder="Add tag..." className="bg-transparent border-none outline-none text-xs text-zinc-300 w-20 py-1"/><button onClick={addTag}><Icon name="Plus" size={12} className="text-zinc-500 hover:text-white"/></button></div>
+                            </div>
+                            {isEditing ? <textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="w-full h-[50vh] bg-zinc-900/50 text-zinc-200 p-4 rounded-xl border border-zinc-700 outline-none resize-none font-mono text-base"/> : <MarkdownRenderer content={thought.content} />}
+                        </div>
+                        <div className="p-6 pb-40">
+                            <div className="flex items-center gap-2 mb-6"><Icon name="Zap" className="text-yellow-400" /><h3 className="text-sm font-bold text-zinc-300 uppercase tracking-widest">Neural Lab</h3></div>
+                            <div className="space-y-4">
+                                {(thought.chatLog || []).map((msg, i) => (
+                                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                        <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.role === 'user' ? 'bg-blue-900 text-blue-100' : 'bg-zinc-900 border border-zinc-700 text-zinc-300'}`}>
+                                            {msg.role === 'ai' && <div className="text-[10px] font-bold text-yellow-500 mb-1 uppercase">AI Insight</div>}
+                                            <MarkdownRenderer content={msg.content} />
+                                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/10 opacity-70 text-[10px]">
+                                                <span>{new Date(msg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                                <button onClick={(e) => {e.stopPropagation(); deleteChatMsg(i);}} className="p-1 hover:text-red-400 ml-2"><Icon name="Trash2" size={12}/></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {isThinking && <div className="text-zinc-500 text-xs animate-pulse ml-4">Generating insight...</div>}
+                                <div ref={chatEndRef} />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="absolute bottom-16 left-0 right-0 p-3 bg-black/80 backdrop-blur border-t border-zinc-800 flex gap-2 safe-bottom">
+                         <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleBrainstorm()} placeholder="Brainstorm..." className="flex-1 bg-zinc-900 border border-zinc-700 rounded-full px-4 py-3 text-sm text-white focus:border-blue-500 outline-none"/>
+                         <button onClick={handleBrainstorm} disabled={isThinking} className="p-3 bg-blue-600 rounded-full text-white disabled:opacity-50"><Icon name="Send" size={18} /></button>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-16 border-t border-zinc-800 bg-zinc-950 flex justify-between items-center px-4 safe-bottom z-10">
+                        <button onClick={onPrev} disabled={!hasPrev} className="text-zinc-400 disabled:opacity-20 hover:text-white p-2"><Icon name="ChevronLeft" /></button>
+                        <span className="text-[10px] text-zinc-600 font-mono">NAVIGATE</span>
+                        <button onClick={onNext} disabled={!hasNext} className="text-zinc-400 disabled:opacity-20 hover:text-white p-2"><Icon name="ChevronRight" /></button>
+                    </div>
+                </div>
+            );
+        };
+
+        const FolderView = ({ structure, data, onOpenItem }) => {
+            const [expanded, setExpanded] = useState({});
+            const toggle = (key) => setExpanded(prev => ({...prev, [key]: !prev[key]}));
+            const renderNode = (node, path = '') => {
+                if (Array.isArray(node)) {
+                    return node.map(id => {
+                        const item = data.find(d => d.id === id);
+                        if (!item) return null;
+                        return (
+                            <div key={id} onClick={() => onOpenItem(item.id)} className="ml-6 p-3 border-l border-zinc-800 hover:bg-zinc-900 cursor-pointer text-sm text-zinc-300 flex items-start gap-2">
+                                <Icon name="CornerDownRight" size={14} className="text-zinc-600 mt-1 shrink-0"/> <span className="line-clamp-1">{item.content}</span>
+                            </div>
+                        );
+                    });
+                }
+                return Object.entries(node).map(([key, value]) => {
+                    const currentPath = path + key;
+                    const isExpanded = expanded[currentPath];
+                    return (
+                        <div key={currentPath} className="ml-4">
+                            <div onClick={() => toggle(currentPath)} className="flex items-center gap-2 p-2 cursor-pointer text-zinc-200 hover:text-white select-none">
+                                <Icon name={isExpanded ? "FolderOpen" : "Folder"} size={16} className={isExpanded ? "text-blue-400" : "text-zinc-500"} /> <span className="font-semibold text-sm">{key}</span>
+                            </div>
+                            {isExpanded && <div className="border-l border-zinc-800 ml-2">{renderNode(value, currentPath)}</div>}
+                        </div>
+                    );
+                });
+            };
+            return <div className="p-4 pb-40">{renderNode(structure)}</div>;
+        };
+
+        const CalendarView = ({ data, onOpenItem, onBatchSelect, selection }) => {
+            const structure = useMemo(() => {
+                const struct = {};
+                data.forEach(item => {
+                    const { year, month, day } = formatDate(item.createdAt);
+                    if (!struct[year]) struct[year] = {};
+                    if (!struct[year][month]) struct[year][month] = {};
+                    if (!struct[year][month][day]) struct[year][month][day] = [];
+                    struct[year][month][day].push(item);
+                });
+                return struct;
+            }, [data]);
+
+            const [expanded, setExpanded] = useState({});
+            const toggle = (k) => setExpanded(p => ({...p, [k]: !p[k]}));
+
+            return (
+                <div className="p-4 pb-40 space-y-4">
+                    {Object.entries(structure).map(([year, months]) => (
+                        <div key={year}>
+                            <div onClick={() => toggle(year)} className="text-xl font-bold text-zinc-500 mb-2 cursor-pointer hover:text-white">{year}</div>
+                            {expanded[year] && Object.entries(months).map(([month, days]) => (
+                                <div key={month} className="ml-4 mb-4">
+                                    <div className="text-lg font-semibold text-blue-400 mb-2">{month}</div>
+                                    <div className="space-y-2">
+                                        {Object.entries(days).map(([day, items]) => (
+                                            <div key={day} className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+                                                <div className="p-3 bg-zinc-800/50 flex justify-between items-center">
+                                                    <span className="font-bold text-zinc-300">Day {day}</span>
+                                                    <button onClick={() => onBatchSelect(items.map(i => i.id))} className="text-zinc-500 hover:text-blue-400"><Icon name="CheckCircle" size={18}/></button>
+                                                </div>
+                                                {items.map(item => (
+                                                    <div key={item.id} onClick={() => onOpenItem(item.id)} className={`p-3 border-t border-zinc-800 hover:bg-zinc-800 cursor-pointer flex gap-3 ${selection.has(item.id) ? 'bg-blue-900/20' : ''}`}>
+                                                        <span className="text-xs text-zinc-500 font-mono mt-1">{new Date(item.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                                        <span className="text-sm text-zinc-300 line-clamp-1">{item.content}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const ProfileView = ({ data = [], profile, onUpdateProfile, apiKey }) => {
+            const [isAnalysing, setIsAnalysing] = useState(false);
+            const [name, setName] = useState(profile?.name || '');
+
+            const handleUpdateName = () => { onUpdateProfile({ ...profile, name }); alert("Identity Updated"); };
+
+            const renderSafe = (content) => {
+                if (typeof content === 'object') return JSON.stringify(content, null, 2);
+                return content;
+            };
+
+            const calculateMetrics = (notes) => {
+                const now = new Date();
+                const totalNotes = notes.length;
+                
+                // 1. Circadian Rhythm (Night Owl Score)
+                // Count notes written between 10PM (22) and 5AM (5)
+                const lateNightNotes = notes.filter(n => {
+                    const h = new Date(n.createdAt).getHours();
+                    return h >= 22 || h < 5;
+                }).length;
+                const nightOwlPercent = totalNotes > 0 ? Math.round((lateNightNotes / totalNotes) * 100) : 0;
+
+                // 2. Velocity (Notes per day in last 7 days)
+                const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const recentNotes = notes.filter(n => new Date(n.createdAt) > oneWeekAgo);
+                const velocity = Math.round((recentNotes.length / 7) * 10) / 10;
+
+                // 3. Depth Ratio (Short behavioral vs Long cognitive)
+                // Threshold: 50 chars.
+                const deepNotes = notes.filter(n => n.content.length > 50).length;
+                const depthPercent = totalNotes > 0 ? Math.round((deepNotes / totalNotes) * 100) : 0;
+
+                return {
+                    totalAnalyzed: totalNotes,
+                    nightOwlPercent,
+                    velocity, // notes/day
+                    depthPercent // % of notes that are "deep"
+                };
+            };
+
+            const runMirror = async () => {
+                if (!apiKey) return alert("API Key Needed");
+
+                const userOnlyNotes = data.filter(d => d.type === 'raw');
+                
+                // We take more data now to get a better picture
+                const inputNotes = userOnlyNotes.slice(0, 100); 
+
+                if (inputNotes.length < 5) return alert("Insufficient Data: Please capture at least 5 raw thoughts.");
+                
+                setIsAnalysing(true);
+                try {
+                    // STEP 1: CALCULATE REALITY (Hard Stats)
+                    const metrics = calculateMetrics(inputNotes);
+                    
+                    // STEP 2: PREPARE TEXT DATA
+                    const textData = inputNotes.map(d => {
+                        let text = `[${new Date(d.createdAt).toLocaleString()}] (Length: ${d.content.length}): ${d.content}`;
+                        if (d.chatLog && Array.isArray(d.chatLog)) {
+                            const userChats = d.chatLog
+                                .filter(msg => msg.role === 'user')
+                                .map(msg => `[User Follow-up]: ${msg.content}`)
+                                .join(" ");
+                            if (userChats) text += `\n${userChats}`;
+                        }
+                        return text;
+                    }).join('\n---\n');
+                    
+                    // STEP 3: CONSTRUCT THE DIFFERENTIAL PROMPT
+                    const previousProfileContext = profile ? JSON.stringify(profile) : "NO PREVIOUS PROFILE (New Analysis)";
+                    
+                    const systemPrompt = `
+                    ROLE: Lead Cognitive & Behavioral Scientist. 
+                    OBJECTIVE: Update the user's psychological profile using "Radical Honesty".
+                    
+                    INPUT DATA:
+                    1. PREVIOUS PROFILE: Use this to detect CHANGES (Trajectory).
+                    2. HARD METRICS: Calculated from metadata. Use this to verify Intent vs Action.
+                    3. RAW LOGS: The user's actual stream-of-consciousness.
+                    
+                    METRICS TO ANALYZE:
+                    - Night Owl Index: ${metrics.nightOwlPercent}% of notes written late at night (implies mania, insomnia, or creative flow).
+                    - Consistency Velocity: ${metrics.velocity} notes/day (implies discipline level).
+                    - Depth Ratio: ${metrics.depthPercent}% deep thoughts vs shallow tasks.
+                    
+                    INSTRUCTION:
+                    1. **Compare** current logs against the Previous Profile. Is the user spiraling or improving?
+                    2. **Correlate** Behavior (Short notes) with Cognition (Long notes). E.g., "User feels anxious after waking up late."
+                    3. **Call out discrepancies.** If user says "I am working hard" but Velocity is low, point it out.
+                    
+                    OUTPUT JSON FORMAT:
+                    {
+                        "cognitive": "Analysis of thinking patterns, focus, and mental models. Mention changes from last profile.",
+                        "personality": "Emotional baseline and behavioral traits derived from the Hard Metrics + Text tone.",
+                        "trajectory": "Vector prediction: Where is the user heading based on the rate of change? Call out risks."
+                    }
+                    `;
+                    
+                    const res = await callGemini(apiKey, `PREVIOUS PROFILE:\n${previousProfileContext}\n\nRAW LOGS:\n${textData}`, systemPrompt, true);
+                    const cleanRes = res.replace(/```json/g, '').replace(/```/g, '');
+                    const analysis = JSON.parse(cleanRes);
+
+                    const safeAnalysis = {
+                        cognitive: typeof analysis.cognitive === 'object' ? JSON.stringify(analysis.cognitive) : analysis.cognitive,
+                        personality: typeof analysis.personality === 'object' ? JSON.stringify(analysis.personality) : analysis.personality,
+                        trajectory: typeof analysis.trajectory === 'object' ? JSON.stringify(analysis.trajectory) : analysis.trajectory,
+                    };
+
+                    onUpdateProfile({ ...profile, name, ...safeAnalysis, lastUpdate: new Date().toISOString() });
+                } catch(e) { alert("Mirror Analysis Failed: " + e.message); }
+                setIsAnalysing(false);
+            };
+
+            return (
+                <div className="p-6 pb-40 overflow-y-auto h-full">
+                    <div className="flex flex-col items-center mb-8">
+                        <TheConstruct count={data?.length || 0} />
+                        <div className="mt-4 w-full max-w-xs">
+                            <label className="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-1 block">Identity</label>
+                            <div className="flex gap-2">
+                                <input value={name} onChange={e => setName(e.target.value)} placeholder="Enter your name" className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 w-full text-center text-white focus:border-blue-500 outline-none"/>
+                                <button onClick={handleUpdateName} className="p-2 bg-zinc-800 rounded-lg text-zinc-400 hover:text-white"><Icon name="Save" size={18}/></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-6">
+                        <button onClick={runMirror} disabled={isAnalysing} className="w-full py-4 bg-gradient-to-r from-indigo-900 to-purple-900 border border-purple-500/30 rounded-xl text-purple-200 font-bold tracking-wide shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">{isAnalysing ? <Icon name="Refresh" className="animate-spin"/> : <Icon name="Sparkles"/>} {isAnalysing ? 'Running Deep Diagnostics...' : 'Update Mirror'}</button>
+                        {profile?.cognitive ? (
+                            <>
+                                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl"><h3 className="text-blue-400 font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="Brain"/> Cognitive Profile</h3><p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{renderSafe(profile.cognitive)}</p></div>
+                                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl"><h3 className="text-pink-400 font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="User"/> Personality Core</h3><p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{renderSafe(profile.personality)}</p></div>
+                                {profile.trajectory && <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl"><h3 className="text-green-400 font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="Target"/> Evolutionary Trajectory</h3><p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{renderSafe(profile.trajectory)}</p></div>}
+                            </>
+                        ) : <div className="text-center text-zinc-500 py-10 opacity-50"><p>The Mirror is foggy.</p><p className="text-xs mt-2">Capture 5+ thoughts and run the analysis.</p></div>}
+                    </div>
+                </div>
+            );
+        };
+
+        function App() {
+            const [data, setData] = useState([]);
+            const [filteredData, setFilteredData] = useState([]);
+            const [profile, setProfile] = useState(null);
+            const [dailyBriefing, setDailyBriefing] = useState(null);
+            const [input, setInput] = useState('');
+            const [search, setSearch] = useState('');
+            const [sel, setSel] = useState(new Set());
+            const [key, setKey] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [readingId, setReadingId] = useState(null);
+            const [activeTab, setActiveTab] = useState('home');
+            const [viewMode, setViewMode] = useState('grid');
+            const [structure, setStructure] = useState(null);
+            const [error, setError] = useState(null);
+            const [isAppLoading, setIsAppLoading] = useState(true);
+            const [loadMessage, setLoadMessage] = useState("Initializing System...");
+            const fileInputRef = useRef(null);
+            
+            // CONFIRMATION STATE
+            const [confirmState, setConfirmState] = useState({ isOpen: false, message: '', onConfirm: null });
+
+            if (error) return <div className="p-6 text-red-500"><h1>Crash Detected</h1><p>{error.message}</p><button onClick={()=>window.location.reload()} className="bg-white text-black p-2 mt-4 rounded">Reload</button></div>;
+
+            useEffect(() => { 
+                const init = async () => {
+                    try {
+                        const safetyTimer = setTimeout(() => {
+                           if (isAppLoading) setIsAppLoading(false);
+                        }, 5000);
+
+                        let currentKey = typeof apiKey !== 'undefined' && apiKey ? apiKey : '';
+                        if (!currentKey) currentKey = localStorage.getItem('gemini_key');
+
+                        if (currentKey) {
+                            setKey(currentKey); 
+                        } else {
+                            setShowSettings(true);
+                        }
+                        
+                        setLoadMessage("Retrieving Neural Maps...");
+                        const d = await dbOps.getAll();
+                        setData(d);
+                        
+                        setLoadMessage("Loading Metacognition...");
+                        const savedStruct = await dbOps.getMeta('folderStructure');
+                        if(savedStruct) setStructure(savedStruct);
+                        const savedProfile = await dbOps.getMeta('user_profile');
+                        if(savedProfile) setProfile(savedProfile);
+                        
+                        const savedBriefing = await dbOps.getMeta('daily_briefing');
+                        setDailyBriefing(savedBriefing);
+
+                        if (currentKey && d.length > 5) {
+                            const today = new Date().toDateString();
+                            if (!savedBriefing || savedBriefing.date !== today) {
+                                setLoadMessage("Analyzing Daily Trajectory...");
+                                await runDailyAnalysis(currentKey, d, savedProfile);
+                            }
+                        }
+                        
+                        clearTimeout(safetyTimer);
+                        setTimeout(() => setIsAppLoading(false), 1000);
+                    } catch(e) { 
+                        console.error(e);
+                        setError(e); 
+                    }
+                };
+                init();
+            }, []);
+
+            useEffect(() => { try { if(key && key !== apiKey) localStorage.setItem('gemini_key', key); } catch(e){} }, [key]);
+            
+            useEffect(() => {
+                if (!search.trim()) { setFilteredData(data); return; }
+                const lower = search.toLowerCase();
+                setFilteredData(data.filter(d => d.content.toLowerCase().includes(lower) || (d.tags && d.tags.some(t => t.toLowerCase().includes(lower)))));
+            }, [search, data]);
+
+            const runDailyAnalysis = async (apiKey, currentData, userProfile) => {
+                try {
+                    const recentRaw = currentData.slice(0, 10).map(t => t.content).join("\n");
+                    const context = `User Profile: ${userProfile ? JSON.stringify(userProfile) : "Unknown"}. Recent Thoughts: ${recentRaw}`;
+                    const prompt = `Role: Executive Function Assistant. Task: Generate a Morning Report based on recent thoughts. 
+                    Output JSON: {
+                        "date": "${new Date().toDateString()}",
+                        "loops": ["List 2-3 specific open loops or unfinished thoughts from the data"],
+                        "focus": "One sentence daily prime directive / focus.",
+                        "trajectory": "One sentence regarding long-term alignment."
+                    }`;
+                    
+                    const res = await callGemini(apiKey, context, prompt, true);
+                    const cleanRes = res.replace(/```json/g, '').replace(/```/g, '');
+                    const briefing = JSON.parse(cleanRes);
+                    setDailyBriefing(briefing);
+                    await dbOps.saveMeta('daily_briefing', briefing);
+                } catch (e) { console.error("Briefing failed", e); }
+            };
+
+            const load = async () => { 
+                try { 
+                    const d = await dbOps.getAll();
+                    setData(d);
+                    const savedStruct = await dbOps.getMeta('folderStructure');
+                    if(savedStruct) setStructure(savedStruct);
+                    const savedProfile = await dbOps.getMeta('user_profile');
+                    if(savedProfile) setProfile(savedProfile);
+                } catch(e){ setError(e); } 
+            };
+            
+            const add = async () => {
+                if(!input.trim()) return;
+                try {
+                    await dbOps.add({ id: generateUUID(), content:input, createdAt:new Date().toISOString(), type:'raw', tags: [] });
+                    setInput(''); load();
+                    if(window.innerWidth < 768) setActiveTab('memory');
+                } catch(e) { alert("Save failed: "+e.message); }
+            };
+
+            const handleImport = async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                try {
+                    const count = await dbOps.import(file);
+                    alert(`Restored ${count} thoughts!`);
+                    load();
+                } catch(err) { alert("Import Failed: " + err.message); }
+            };
+
+            const toggleSel = (e, id) => { e.stopPropagation(); const s = new Set(sel); s.has(id)?s.delete(id):s.add(id); setSel(s); };
+            
+            const batchSelect = (ids) => {
+                const newSel = new Set(sel);
+                ids.forEach(id => newSel.add(id));
+                setSel(newSel);
+            };
+
+            const requestConfirm = (message, action) => {
+                setConfirmState({ isOpen: true, message, onConfirm: () => { action(); setConfirmState({isOpen:false, message:'', onConfirm:null}); } });
+            };
+
+            const deleteSelected = () => {
+                requestConfirm(`Permanently delete ${sel.size} items?`, async () => {
+                    for(const id of sel) await dbOps.del(id);
+                    setSel(new Set());
+                    load();
+                });
+            };
+
+            const runOrganizer = async () => {
+                if(!key) return setShowSettings(true);
+                setLoading(true);
+                try {
+                    const simplifiedData = data.map(d => ({id: d.id, text: d.content.substring(0, 150)}));
+                    const prompt = `Role: Chief Librarian. Organize these notes into logical JSON directory. Input: ${JSON.stringify(simplifiedData)}. Format: { "Category": { "Sub": ["id"] } }. Return ONLY JSON.`;
+                    let res = await callGemini(key, "Organize", prompt, true);
+                    res = res.replace(/```json/g, '').replace(/```/g, '');
+                    const struct = JSON.parse(res);
+                    setStructure(struct);
+                    await dbOps.saveMeta('folderStructure', struct);
+                    setViewMode('folder');
+                } catch(e) { alert("Organization failed: " + e.message); }
+                setLoading(false);
+            };
+
+            const updateProfile = async (newProfile) => {
+                setProfile(newProfile);
+                await dbOps.saveMeta('user_profile', newProfile);
+            };
+
+            const runAI = async (mode) => {
+                if(!key) return setShowSettings(true);
+                setLoading(true);
+                try {
+                    const txt = data.filter(t=>sel.has(t.id)).map(t=>t.content).join('\n---\n');
+                    const profileContext = profile ? `USER CONTEXT: Name: ${profile.name}. Cognitive Profile: ${profile.cognitive}. Personality: ${profile.personality}.` : "";
+                    const prompts = {
+                        synthesize: `${profileContext} Role: Essentialist. Apply 80/20 rule. Synthesize notes into ONE high-impact Markdown document. Use bold headers and bullets.`,
+                        pattern: `${profileContext} Role: Systems Thinker. Find connections, causal loops, or contradictions.`,
+                        challenge: `${profileContext} Role: Red Team. Pre-Mortem analysis. Assume failure and explain why.`,
+                        strategy: `${profileContext} Role: Grandmaster Strategist. Task: Apply OODA Loop. Be aware of user's bias.`
+                    };
+                    const res = await callGemini(key, txt, prompts[mode]);
+                    await dbOps.add({ id: generateUUID(), content:res, createdAt:new Date().toISOString(), type:mode==='synthesize'?'refined':mode==='strategy'?'strategy':'analysis', tags: [] });
+                    if(mode==='synthesize') {
+                        requestConfirm("Synthesis complete. Delete original raw notes to clean up?", async () => {
+                            for(const id of sel) await dbOps.del(id);
+                            setSel(new Set()); load();
+                        });
+                    } else {
+                        setSel(new Set()); load();
+                    }
+                } catch(e) { alert(e.message); }
+                setLoading(false);
+            };
+
+            const handleNoteUpdate = (updatedNote) => { setData(prev => prev.map(item => item.id === updatedNote.id ? updatedNote : item)); };
+
+            const currentIndex = useMemo(() => data.findIndex(t => t.id === readingId), [data, readingId]);
+            const readingItem = data[currentIndex];
+            const hasNext = currentIndex > 0;
+            const hasPrev = currentIndex > -1 && currentIndex < data.length - 1;
+
+            if (isAppLoading) return <LoadingScreen message={loadMessage} />;
+
+            if(showSettings) return (
+                <div className="min-h-screen flex items-center justify-center p-6 bg-black">
+                    <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4">
+                        <div className="text-center text-white font-bold text-xl mb-4">Unlock Mind Palace</div>
+                        <input type="password" placeholder="Gemini API Key" value={key} onChange={e=>setKey(e.target.value)} className="w-full bg-black border border-zinc-700 p-3 rounded text-white"/>
+                        <button onClick={()=>key && setShowSettings(false)} className="w-full bg-white text-black font-bold p-3 rounded">Enter</button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen bg-black text-zinc-200 flex flex-col md:flex-row pb-20 md:pb-0 safe-top">
+                    <ConfirmModal isOpen={confirmState.isOpen} message={confirmState.message} onConfirm={confirmState.onConfirm} onCancel={() => setConfirmState({isOpen:false, message:'', onConfirm:null})} />
+                    
+                    <FullScreenReader thought={readingItem} onClose={() => setReadingId(null)} onNext={() => setReadingId(data[currentIndex - 1].id)} onPrev={() => setReadingId(data[currentIndex + 1].id)} hasNext={hasNext} hasPrev={hasPrev} onUpdate={handleNoteUpdate} profile={profile} requestConfirm={requestConfirm} />
+                    
+                    <div className={`w-full md:w-96 bg-zinc-900/50 border-b md:border-r border-zinc-800 flex-col h-[calc(100vh-80px)] md:h-screen shrink-0 ${activeTab === 'capture' ? 'flex' : 'hidden md:flex'}`}>
+                        <div className="p-4 flex justify-between items-center border-b border-zinc-800">
+                            <span className="font-bold flex gap-2 items-center text-white"><Icon name="Brain"/> Mind Palace</span>
+                            <div className="flex gap-2">
+                                <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
+                                <button onClick={() => setActiveTab('home')} className="md:hidden"><Icon name="Home" className="text-zinc-500 hover:text-white"/></button>
+                                <button onClick={() => fileInputRef.current?.click()}><Icon name="Upload" className="text-zinc-500 hover:text-white"/></button>
+                                <button onClick={dbOps.export}><Icon name="Download" className="text-zinc-500 hover:text-white"/></button>
+                                <button onClick={()=>setShowSettings(true)}><Icon name="Settings" className="text-zinc-500 hover:text-white"/></button>
+                            </div>
+                        </div>
+                        <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto">
+                            <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Dump thoughts..." className="w-full h-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-base focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed" />
+                            <button onClick={add} disabled={!input} className="w-full bg-zinc-100 text-black font-bold py-4 rounded-xl flex justify-center gap-2 items-center shrink-0 active:scale-95 transition-transform"><Icon name="Plus"/> Save</button>
+                        </div>
+                    </div>
+
+                    <div className={`flex-1 bg-black flex-col h-[calc(100vh-80px)] md:h-screen relative ${activeTab !== 'capture' ? 'flex' : 'hidden md:flex'}`}>
+                        {activeTab === 'home' && (
+                             <HomeView 
+                                profile={profile} 
+                                briefing={dailyBriefing} 
+                                onNavigate={setActiveTab} 
+                                stats={{todayCount: data.filter(d => new Date(d.createdAt).toDateString() === new Date().toDateString()).length}}
+                             />
+                        )}
+                        {activeTab === 'profile' && (
+                            <ProfileView data={data} profile={profile} onUpdateProfile={updateProfile} apiKey={key} />
+                        )} 
+                        {activeTab === 'memory' && (
+                            <>
+                                {loading && <div className="absolute inset-0 bg-black/80 z-40 flex items-center justify-center flex-col"><Icon name="Brain" className="animate-spin text-white mb-4" size={48}/><span className="text-zinc-400 animate-pulse">Processing...</span></div>}
+                                <div className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 bg-black/90 backdrop-blur z-10 sticky top-0 shrink-0 gap-4">
+                                    <div className="flex-1 relative">
+                                        <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
+                                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search memory..." className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2 text-sm focus:border-zinc-600 outline-none" />
+                                    </div>
+                                    <div className="flex bg-zinc-900 rounded-lg p-1 gap-1 shrink-0">
+                                        <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md ${viewMode === 'grid' || search ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}><Icon name="Grid" size={16} /></button>
+                                        <button onClick={() => setViewMode('calendar')} className={`p-1.5 rounded-md ${viewMode === 'calendar' && !search ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}><Icon name="Calendar" size={16} /></button>
+                                        <button onClick={() => setViewMode('folder')} disabled={!!search} className={`p-1.5 rounded-md ${viewMode === 'folder' && !search ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-30'}`}><Icon name="Folder" size={16} /></button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto content-start">
+                                    {viewMode === 'folder' && !search ? (
+                                        structure ? (
+                                            <>
+                                                <div className="p-4 flex justify-between items-center border-b border-zinc-800/50">
+                                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Smart Directory</span>
+                                                    <button onClick={runOrganizer} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"><Icon name="Refresh" size={12}/> Re-Organize</button>
+                                                </div>
+                                                <FolderView structure={structure} data={data} onOpenItem={setReadingId} />
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-full text-zinc-500 space-y-4 p-8 text-center">
+                                                <Icon name="Folder" size={48} className="opacity-20"/>
+                                                <p>No structure yet.</p>
+                                                <button onClick={runOrganizer} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20">Run Auto-Organizer</button>
+                                            </div>
+                                        )
+                                    ) : viewMode === 'calendar' && !search ? (
+                                        <CalendarView data={data} onOpenItem={setReadingId} onBatchSelect={batchSelect} selection={sel} />
+                                    ) : (
+                                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-40">
+                                            {filteredData.length === 0 && (
+                                                <div className="col-span-full text-center text-zinc-600 mt-20 flex flex-col items-center">
+                                                    <Icon name="Brain" size={48} className="opacity-20 mb-4"/>
+                                                    <p>{search ? 'No results found.' : 'Memory is empty.'}</p>
+                                                </div>
+                                            )}
+                                            {filteredData.map(t => (
+                                                <div key={t.id} onClick={() => setReadingId(t.id)} className={`relative p-5 rounded-xl border transition-all cursor-pointer group active:scale-[0.98] ${sel.has(t.id)?'bg-blue-900/10 border-blue-500/50':'bg-zinc-900 border-zinc-800 hover:border-zinc-600'}`}>
+                                                    <div className="flex justify-between mb-3 items-start">
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${t.type==='strategy'?'bg-blue-900/30 text-blue-400':t.type==='raw'?'text-zinc-500 bg-zinc-800':t.type==='refined'?'text-green-400 bg-green-900/20':'text-purple-400 bg-purple-900/20'}`}>{t.type}</span>
+                                                        <div onClick={(e) => toggleSel(e, t.id)} className={`w-10 h-10 -mr-3 -mt-3 rounded-bl-xl rounded-tr-xl flex items-center justify-center transition-colors z-20 ${sel.has(t.id)?'bg-blue-500 text-white':'bg-transparent text-zinc-600'}`}>
+                                                            {sel.has(t.id) ? <Icon name="CheckCircle" size={20} className="fill-current"/> : <div className="w-5 h-5 rounded-full border-2 border-zinc-700"></div>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-sm text-zinc-300 line-clamp-[6] leading-relaxed opacity-90 mb-2">{t.content}</div>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {t.tags && t.tags.slice(0, 2).map(tag => (
+                                                            <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-500">#{tag}</span>
+                                                        ))}
+                                                        {t.tags && t.tags.length > 2 && <span className="text-[10px] px-1.5 py-0.5 text-zinc-600">+{t.tags.length - 2}</span>}
+                                                    </div>
+                                                    <div className="absolute bottom-5 right-5 text-[10px] text-zinc-600">{new Date(t.createdAt).toLocaleDateString()}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-zinc-950 border-t border-zinc-800 flex justify-around items-center z-30 safe-bottom">
+                         <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'home' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'home' ? 'bg-zinc-800' : ''}`}><Icon name="Home" /></div><span className="text-[10px] font-bold">Base</span></button>
+                        <button onClick={() => setActiveTab('capture')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'capture' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'capture' ? 'bg-zinc-800' : ''}`}><Icon name="Pen" /></div><span className="text-[10px] font-bold">Capture</span></button>
+                        <button onClick={() => setActiveTab('memory')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'memory' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'memory' ? 'bg-zinc-800' : ''}`}><Icon name="Grid" /></div><span className="text-[10px] font-bold">Memory</span></button>
+                        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'profile' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'profile' ? 'bg-zinc-800' : ''}`}><Icon name="User" /></div><span className="text-[10px] font-bold">Mirror</span></button>
+                    </div>
+
+                    {sel.size > 0 && activeTab === 'memory' && (
+                        <div className="fixed bottom-24 md:bottom-8 left-4 right-4 md:left-auto md:right-8 md:w-96 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 z-50 animate-in slide-in-from-bottom-10 shadow-2xl">
+                             <div className="flex justify-between items-center mb-4">
+                                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{sel.size} Items Selected</span>
+                                <button onClick={deleteSelected} className="text-red-400 text-xs flex gap-1 font-bold bg-red-900/20 px-3 py-1 rounded-full"><Icon name="Trash2" size={14}/> Delete</button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                                <button onClick={()=>runAI('synthesize')} className="flex flex-col items-center gap-1 p-2 bg-zinc-800 rounded-xl hover:bg-zinc-700 active:scale-95 transition-all"><Icon name="Sparkles" className="text-green-400"/><span className="text-[9px] font-bold text-zinc-300">Refine</span></button>
+                                <button onClick={()=>runAI('pattern')} className="flex flex-col items-center gap-1 p-2 bg-zinc-800 rounded-xl hover:bg-zinc-700 active:scale-95 transition-all"><Icon name="Brain" className="text-purple-400"/><span className="text-[9px] font-bold text-zinc-300">Pattern</span></button>
+                                <button onClick={()=>runAI('challenge')} className="flex flex-col items-center gap-1 p-2 bg-zinc-800 rounded-xl hover:bg-zinc-700 active:scale-95 transition-all"><Icon name="Shield" className="text-orange-400"/><span className="text-[9px] font-bold text-zinc-300">Critic</span></button>
+                                <button onClick={()=>runAI('strategy')} className="flex flex-col items-center gap-1 p-2 bg-zinc-800 rounded-xl hover:bg-zinc-700 active:scale-95 transition-all"><Icon name="Target" className="text-blue-400"/><span className="text-[9px] font-bold text-zinc-300">Strategy</span></button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+
