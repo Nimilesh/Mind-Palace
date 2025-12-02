@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mind Palace OS</title>
+    <title>Mind Palace OS v3.0</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
@@ -27,10 +27,20 @@
         .glass-panel { background: rgba(24, 24, 27, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
         .sentinel-alert { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        .archived-item { opacity: 0.5; filter: grayscale(100%); }
+        /* Canvas Cursor */
+        canvas { touch-action: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            // Suppress minor resize loop errors common in React 18
+            if (msg.includes('ResizeObserver loop')) return;
+            console.error(msg, error);
+        };
+    </script>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
@@ -66,7 +76,7 @@
         const Icon = ({ name, size = 20, className = "" }) => {
             const icons = {
                 Brain: <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/>,
-                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1 1.275-1.275L12 3Z"/>,
+                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275-1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1 1.275-1.275L12 3Z"/>,
                 Trash2: <g><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></g>,
                 Plus: <path d="M5 12h14 M12 5v14"/>,
                 Settings: <g><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g>,
@@ -99,7 +109,11 @@
                 Moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>,
                 List: <g><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></g>,
                 Eye: <g><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></g>,
-                Book: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                EyeOff: <g><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.3 2.8"/><path d="M12 21c-7 0-11-8-11-8a18.5 18.5 0 0 1 2.16-3.19"/><line x1="1" y1="1" x2="23" y2="23"/></g>,
+                Book: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>,
+                Archive: <g><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></g>,
+                ChevronDown: <path d="m6 9 6 6 6-6"/>,
+                Box: <g><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></g>
             };
             return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10"/>}</svg>;
         };
@@ -108,11 +122,18 @@
         const DB_NAME='MindPalaceDB', STORE='thoughts', META_STORE='meta';
         const dbOps = {
             init: () => new Promise((res, rej) => {
-                // Version 3 forces a clean update to ensure stores exist
-                const req = indexedDB.open(DB_NAME, 3); 
+                const req = indexedDB.open(DB_NAME, 5); 
                 req.onupgradeneeded = e => {
                     const db = e.target.result;
-                    if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, {keyPath:'id'});
+                    let store;
+                    if (!db.objectStoreNames.contains(STORE)) {
+                        store = db.createObjectStore(STORE, {keyPath:'id'});
+                    } else {
+                        store = req.transaction.objectStore(STORE);
+                    }
+                    if (!store.indexNames.contains('date')) {
+                        store.createIndex('date', 'createdAt', { unique: false });
+                    }
                     if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE, {keyPath:'id'});
                 };
                 req.onsuccess = () => res(req.result);
@@ -124,6 +145,36 @@
             }),
             add: async (item) => { const db=await dbOps.init(); const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(item); return new Promise(r=>tx.oncomplete=r); },
             getAll: async () => { const db=await dbOps.init(); return new Promise(r=>{const req=db.transaction(STORE,'readonly').objectStore(STORE).getAll(); req.onsuccess=()=>r(req.result.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)))}); },
+            getBatch: async (lastCreatedAt = null, limit = 20, includeArchived = false) => {
+                const db = await dbOps.init();
+                return new Promise(resolve => {
+                    const tx = db.transaction(STORE, 'readonly');
+                    const store = tx.objectStore(STORE);
+                    if (!store.indexNames.contains('date')) {
+                        console.warn("Missing 'date' index. Falling back to getAll.");
+                        const allReq = store.getAll();
+                        allReq.onsuccess = () => {
+                            let sorted = allReq.result.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+                            if (!includeArchived) sorted = sorted.filter(i => !i.isArchived);
+                            resolve(sorted.slice(0, limit)); 
+                        };
+                        return;
+                    }
+                    const index = store.index('date');
+                    const results = [];
+                    let range = null;
+                    if (lastCreatedAt) range = IDBKeyRange.upperBound(lastCreatedAt, true); 
+                    const req = index.openCursor(range, 'prev'); 
+                    req.onsuccess = (e) => {
+                        const cursor = e.target.result;
+                        if (cursor && results.length < limit) {
+                            if (!includeArchived && cursor.value.isArchived) { cursor.continue(); return; }
+                            results.push(cursor.value);
+                            cursor.continue();
+                        } else resolve(results);
+                    };
+                });
+            },
             del: async (id) => { const db=await dbOps.init(); const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(id); return new Promise(r=>tx.oncomplete=r); },
             saveMeta: async (id, data) => { const db=await dbOps.init(); const tx=db.transaction(META_STORE,'readwrite'); tx.objectStore(META_STORE).put({id, data}); return new Promise(r=>tx.oncomplete=r); },
             getMeta: async (id) => { const db=await dbOps.init(); return new Promise(r=>{const req=db.transaction(META_STORE,'readonly').objectStore(META_STORE).get(id); req.onsuccess=()=>r(req.result?.data);}); },
@@ -159,13 +210,9 @@
         };
 
         const callGemini = async (key, txt, sys, jsonMode = false) => {
-            const payload = { 
-                contents:[{parts:[{text:txt}]}], 
-                systemInstruction:{parts:[{text:sys}]} 
-            };
+            const payload = { contents:[{parts:[{text:txt}]}], systemInstruction:{parts:[{text:sys}]} };
             if (jsonMode) payload.generationConfig = { responseMimeType: "application/json" };
-
-            const delays = [1000, 2000, 4000, 8000, 16000];
+            const delays = [1000, 2000, 4000, 8000];
             let lastError;
             for (let i = 0; i <= delays.length; i++) {
                 try {
@@ -185,7 +232,201 @@
             throw lastError;
         };
 
+        // --- NEW INTELLIGENCE LAYERS (V3.0) ---
+
+        // 1. GATEKEEPER: Filters Noise from Signal
+        const checkSignificance = async (text, key) => {
+            if (!key) return false;
+            // Short circuit extremely short texts to save API calls
+            if (text.length < 5) return false; 
+            const prompt = `Analyze this note: "${text}". Is this a significant thought, progress update, or emotional state? Or is it a mundane task (e.g., "bought milk", "chores", "reminder")? 
+            Return JSON: { "isSignificant": boolean, "reason": "brief reason" }`;
+            try {
+                const res = await callGemini(key, text, prompt, true);
+                const clean = res.replace(/```json/g, '').replace(/```/g, '');
+                return JSON.parse(clean).isSignificant;
+            } catch (e) { return false; } 
+        };
+
+        // 2. SYNAPSE GENERATOR: Auto-tagging
+        const generateConcepts = async (text, key) => {
+            if (!key) return [];
+            const prompt = `Analyze this thought: "${text}". Extract 3 conceptual tags (themes). Return JSON array of strings. Example: ["anxiety", "future-planning"].`;
+            try {
+                const res = await callGemini(key, text, prompt, true);
+                const clean = res.replace(/```json/g, '').replace(/```/g, '');
+                return JSON.parse(clean);
+            } catch (e) { return []; }
+        };
+
+        // 3. CANDIDATE FINDER: Jaccard Similarity (Client Side)
+        const findCandidates = (currentTags, allNotes) => {
+            if (!currentTags || currentTags.length === 0) return [];
+            return allNotes
+                .filter(n => !n.isArchived)
+                .map(n => {
+                    const intersection = (n.tags || []).filter(t => currentTags.includes(t));
+                    const union = new Set([...currentTags, ...(n.tags||[])]).size;
+                    const score = union === 0 ? 0 : intersection.length / union;
+                    return { ...n, score, intersection };
+                })
+                .filter(n => n.score > 0.05) // Low threshold for looser connections
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 3);
+        };
+
+        // 4. CLASSIFIER: Deep Linking
+        const classifyConnections = async (currentNote, candidates, key) => {
+            if (!key || candidates.length === 0) return [];
+            const candidatesText = candidates.map(c => `[ID:${c.id}] ${c.content.substring(0, 50)}...`).join('\n');
+            const prompt = `Analyze relationship between CURRENT and CANDIDATES.
+            CURRENT: "${currentNote.content}"
+            CANDIDATES: ${candidatesText}
+            Classify connection: "EXTENSION", "FRICTION", "SPARK", "ECHO".
+            Return JSON Array: [{ "targetId": "uuid", "type": "TYPE", "reason": "5 words max" }]`;
+            try {
+                const res = await callGemini(key, "Link Analysis", prompt, true);
+                const clean = res.replace(/```json/g, '').replace(/```/g, '');
+                return JSON.parse(clean);
+            } catch (e) { return []; }
+        };
+
         // --- COMPONENTS ---
+
+        // NEW: Constellation View (Canvas Star Map)
+        const ConstellationView = ({ data, onSelect }) => {
+            const canvasRef = useRef(null);
+            const [hoveredNode, setHoveredNode] = useState(null);
+            const simulation = useRef({ nodes: [], edges: [], offset: {x:0, y:0}, scale: 1, dragging: false, lastPos: {x:0,y:0} });
+
+            useEffect(() => {
+                if (!data) return;
+                const nodes = data.map(d => ({
+                    id: d.id,
+                    x: (Math.random()-0.5)*window.innerWidth,
+                    y: (Math.random()-0.5)*window.innerHeight,
+                    vx: 0, vy: 0,
+                    content: d.content,
+                    tags: d.tags || [],
+                    type: d.type,
+                    createdAt: d.createdAt
+                }));
+                const edges = [];
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const shared = nodes[i].tags.filter(t => nodes[j].tags.includes(t));
+                        if (shared.length > 0) edges.push({ source: i, target: j });
+                    }
+                }
+                simulation.current.nodes = nodes;
+                simulation.current.edges = edges;
+                simulation.current.offset = { x: window.innerWidth/2, y: window.innerHeight/2 };
+            }, [data]);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animId;
+                const render = () => {
+                    if (canvas.width !== window.innerWidth) canvas.width = window.innerWidth;
+                    if (canvas.height !== window.innerHeight) canvas.height = window.innerHeight;
+                    const { nodes, edges } = simulation.current;
+                    
+                    // Physics
+                    for (let i = 0; i < nodes.length; i++) {
+                        for (let j = i + 1; j < nodes.length; j++) {
+                            const dx = nodes[i].x - nodes[j].x;
+                            const dy = nodes[i].y - nodes[j].y;
+                            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                            if (dist < 300) {
+                                const force = 100 / (dist * dist);
+                                nodes[i].vx += (dx/dist)*force; nodes[i].vy += (dy/dist)*force;
+                                nodes[j].vx -= (dx/dist)*force; nodes[j].vy -= (dy/dist)*force;
+                            }
+                        }
+                    }
+                    edges.forEach(e => {
+                        const a = nodes[e.source];
+                        const b = nodes[e.target];
+                        const dx = b.x - a.x;
+                        const dy = b.y - a.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                        const force = (dist - 100) * 0.05;
+                        a.vx += (dx/dist)*force; a.vy += (dy/dist)*force;
+                        b.vx -= (dx/dist)*force; b.vy -= (dy/dist)*force;
+                    });
+                    nodes.forEach(n => {
+                        n.vx -= n.x * 0.01; n.vy -= n.y * 0.01; // Gravity to center
+                        n.x += n.vx; n.y += n.vy;
+                        n.vx *= 0.9; n.vy *= 0.9;
+                    });
+
+                    // Draw
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.save();
+                    ctx.translate(simulation.current.offset.x, simulation.current.offset.y);
+                    ctx.scale(simulation.current.scale, simulation.current.scale);
+                    
+                    ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+                    ctx.lineWidth = 1;
+                    edges.forEach(e => {
+                        const a = nodes[e.source];
+                        const b = nodes[e.target];
+                        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+                    });
+
+                    nodes.forEach(n => {
+                        ctx.beginPath();
+                        ctx.fillStyle = n.type === 'strategy' ? '#60a5fa' : n.type === 'refined' ? '#4ade80' : '#a1a1aa';
+                        ctx.arc(n.x, n.y, 3/simulation.current.scale + 2, 0, Math.PI*2);
+                        ctx.fill();
+                    });
+                    ctx.restore();
+
+                    if (hoveredNode) {
+                        ctx.fillStyle = 'rgba(24, 24, 27, 0.9)';
+                        ctx.strokeStyle = '#333';
+                        ctx.beginPath(); ctx.roundRect(hoveredNode.screenX+15, hoveredNode.screenY-15, 220, 60, 8); ctx.fill(); ctx.stroke();
+                        ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace';
+                        ctx.fillText(hoveredNode.content.substring(0,25)+"...", hoveredNode.screenX+25, hoveredNode.screenY+5);
+                        ctx.fillStyle = '#666'; ctx.font = '10px monospace';
+                        ctx.fillText((hoveredNode.tags||[]).join(', '), hoveredNode.screenX+25, hoveredNode.screenY+20);
+                    }
+                    animId = requestAnimationFrame(render);
+                };
+                render();
+                return () => cancelAnimationFrame(animId);
+            }, [hoveredNode]);
+
+            const handleMouse = (e, type) => {
+                const rect = canvasRef.current.getBoundingClientRect();
+                const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                if (type==='down') { simulation.current.dragging=true; simulation.current.lastPos={x:mx, y:my}; }
+                if (type==='up') { 
+                    simulation.current.dragging=false; 
+                    if(hoveredNode) onSelect(hoveredNode.id);
+                }
+                if (type==='move') {
+                    if(simulation.current.dragging) {
+                        simulation.current.offset.x += mx - simulation.current.lastPos.x;
+                        simulation.current.offset.y += my - simulation.current.lastPos.y;
+                        simulation.current.lastPos = {x:mx, y:my};
+                    }
+                    const worldX = (mx - simulation.current.offset.x)/simulation.current.scale;
+                    const worldY = (my - simulation.current.offset.y)/simulation.current.scale;
+                    const hit = simulation.current.nodes.find(n => Math.sqrt((n.x-worldX)**2 + (n.y-worldY)**2) < 15/simulation.current.scale);
+                    setHoveredNode(hit ? {...hit, screenX:mx, screenY:my} : null);
+                }
+            };
+            const handleWheel = (e) => {
+                 let s = simulation.current.scale - e.deltaY * 0.001;
+                 simulation.current.scale = Math.max(0.1, Math.min(s, 5));
+            };
+
+            return <canvas ref={canvasRef} className="w-full h-full bg-black cursor-crosshair" onMouseDown={e=>handleMouse(e,'down')} onMouseMove={e=>handleMouse(e,'move')} onMouseUp={e=>handleMouse(e,'up')} onWheel={handleWheel} />;
+        };
+
         const LoadingScreen = ({ message }) => {
             return (
                 <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black">
@@ -212,14 +453,12 @@
                 <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-zinc-900 border border-zinc-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <div className="flex flex-col items-center text-center space-y-4">
-                            <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center text-red-500">
-                                <Icon name="Alert" size={24} />
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Are you sure?</h3>
+                            <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center text-red-500"><Icon name="Alert" size={24} /></div>
+                            <h3 className="text-lg font-bold text-white">System Query</h3>
                             <p className="text-zinc-400 text-sm">{message}</p>
                             <div className="flex gap-3 w-full pt-2">
                                 <button onClick={onCancel} className="flex-1 py-3 rounded-xl bg-zinc-800 text-white font-semibold hover:bg-zinc-700 transition-colors">Cancel</button>
-                                <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors">Delete</button>
+                                <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors">Confirm</button>
                             </div>
                         </div>
                     </div>
@@ -235,12 +474,7 @@
                 'MOTIVATE': 'border-blue-500/50 bg-blue-900/40 text-blue-200',
                 'NONE': 'border-zinc-800 bg-zinc-900'
             };
-            const icons = {
-                'CRITIC': 'Alert',
-                'PRAISE': 'Zap',
-                'MOTIVATE': 'Sparkles',
-                'NONE': 'Brain'
-            };
+            const icons = { 'CRITIC': 'Alert', 'PRAISE': 'Zap', 'MOTIVATE': 'Sparkles', 'NONE': 'Brain' };
 
             return (
                 <div className="fixed top-6 right-4 left-4 md:left-auto md:w-96 z-[150] animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-none">
@@ -248,7 +482,7 @@
                         <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2">
                                 <Icon name={icons[alert.type]} size={16} />
-                                <span className="text-xs font-bold uppercase tracking-widest">Sentinel</span>
+                                <span className="text-xs font-bold uppercase tracking-widest">Sentinel Command</span>
                             </div>
                             <button onClick={onClose}><Icon name="X" size={14}/></button>
                         </div>
@@ -267,17 +501,9 @@
                         if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-blue-400 mt-8 mb-3 border-b border-zinc-800 pb-2">{line.replace('## ', '')}</h2>;
                         if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold text-white mt-8 mb-4">{line.replace('# ', '')}</h1>;
                         if (line.trim().startsWith('- ')) return <div key={i} className="flex gap-2 ml-4 text-zinc-300"><span className="text-zinc-500">•</span><span>{line.replace('- ', '')}</span></div>;
-                        if (line.trim().match(/^\d+\./)) return <div key={i} className="flex gap-2 ml-4 text-zinc-300"><span className="text-zinc-500 font-mono">{line.split('.')[0]}.</span><span>{line.replace(/^\d+\.\s/, '')}</span></div>;
                         if (!line.trim()) return <div key={i} className="h-2"></div>;
                         const parts = line.split(/(\*\*.*?\*\*)/g);
-                        return (
-                            <p key={i} className="text-zinc-300 leading-relaxed">
-                                {parts.map((part, j) => {
-                                    if (part.startsWith('**') && part.endsWith('**')) return <span key={j} className="font-bold text-zinc-100">{part.slice(2, -2)}</span>;
-                                    return part;
-                                })}
-                            </p>
-                        );
+                        return <p key={i} className="text-zinc-300 leading-relaxed">{parts.map((part, j) => (part.startsWith('**') && part.endsWith('**')) ? <span key={j} className="font-bold text-zinc-100">{part.slice(2, -2)}</span> : part)}</p>;
                     })}
                 </div>
             );
@@ -300,98 +526,7 @@
             );
         };
 
-        const HomeView = ({ profile, briefing, onNavigate, stats }) => {
-            const timeOfDay = getGreeting();
-            const hasBriefing = briefing && briefing.date === new Date().toDateString();
-
-            return (
-                <div className="p-6 pb-40 overflow-y-auto h-full animate-in fade-in duration-500">
-                    <div className="mb-8 mt-4">
-                        <div className="flex items-center gap-3 mb-2 text-zinc-400">
-                            {timeOfDay.includes("Night") ? <Icon name="Moon" size={18}/> : <Icon name="Sun" size={18}/>}
-                            <span className="text-xs font-mono uppercase tracking-widest">{timeOfDay}</span>
-                        </div>
-                        <h1 className="text-3xl font-bold text-white mb-1">
-                            Welcome back, {profile?.name || 'Architect'}.
-                        </h1>
-                        <p className="text-zinc-500 text-sm">
-                            System is active. {stats.todayCount} thoughts captured today.
-                        </p>
-                    </div>
-
-                    <div className="mb-8">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
-                                <Icon name="Brain" className="text-blue-500"/> Daily Briefing
-                            </h2>
-                            <span className="text-[10px] bg-zinc-900 border border-zinc-800 px-2 py-1 rounded text-zinc-500 font-mono">
-                                {hasBriefing ? 'ANALYSIS COMPLETE' : 'WAITING FOR DATA'}
-                            </span>
-                        </div>
-                        
-                        <div className="glass-panel rounded-2xl p-6 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none"></div>
-                            
-                            {hasBriefing ? (
-                                <div className="space-y-6 relative z-10">
-                                    {briefing.focus && (
-                                        <div>
-                                            <div className="text-xs text-blue-400 font-bold uppercase mb-2">Prime Directive</div>
-                                            <p className="text-lg text-white font-medium leading-relaxed">{briefing.focus}</p>
-                                        </div>
-                                    )}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {briefing.loops && briefing.loops.length > 0 && (
-                                            <div className="bg-black/30 p-4 rounded-xl border border-white/5">
-                                                <div className="text-xs text-orange-400 font-bold uppercase mb-2 flex gap-1 items-center"><Icon name="Refresh" size={12}/> Open Loops</div>
-                                                <ul className="space-y-2">
-                                                    {briefing.loops.map((loop, i) => (
-                                                        <li key={i} className="text-sm text-zinc-300 flex gap-2">
-                                                            <span className="text-zinc-600">•</span> {loop}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {briefing.trajectory && (
-                                            <div className="bg-black/30 p-4 rounded-xl border border-white/5">
-                                                <div className="text-xs text-purple-400 font-bold uppercase mb-2 flex gap-1 items-center"><Icon name="Target" size={12}/> Trajectory</div>
-                                                <p className="text-sm text-zinc-300 leading-relaxed">{briefing.trajectory}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-8">
-                                    <p className="text-zinc-500 text-sm mb-4">Capture more thoughts to generate your Neural Report.</p>
-                                    <button onClick={() => onNavigate('capture')} className="bg-zinc-100 text-black px-4 py-2 rounded-lg text-sm font-bold hover:scale-105 transition-transform">Start Capturing</button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <button onClick={() => onNavigate('capture')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
-                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="Pen" size={16}/></div>
-                            <div className="font-bold text-sm text-zinc-200">Quick Capture</div>
-                            <div className="text-xs text-zinc-500 mt-1">Log a thought</div>
-                        </button>
-                        <button onClick={() => onNavigate('memory')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
-                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="Grid" size={16}/></div>
-                            <div className="font-bold text-sm text-zinc-200">Memory Bank</div>
-                            <div className="text-xs text-zinc-500 mt-1">Review archives</div>
-                        </button>
-                        <button onClick={() => onNavigate('profile')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
-                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="User" size={16}/></div>
-                            <div className="font-bold text-sm text-zinc-200">The Mirror</div>
-                            <div className="text-xs text-zinc-500 mt-1">Self analysis</div>
-                        </button>
-                    </div>
-                </div>
-            );
-        };
-
-        const FullScreenReader = ({ thought, onClose, onNext, onPrev, hasNext, hasPrev, onUpdate, profile, requestConfirm }) => {
+        const FullScreenReader = ({ thought, onClose, onNext, onPrev, hasNext, hasPrev, onUpdate, profile, requestConfirm, allData }) => {
             const [chatInput, setChatInput] = useState('');
             const [isThinking, setIsThinking] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
@@ -405,15 +540,12 @@
                 setEditContent(thought?.content || '');
                 const k = localStorage.getItem('gemini_key') || (typeof apiKey !== 'undefined' ? apiKey : '');
                 setKey(k);
-            }, [thought?.chatLog, isThinking, thought]);
+            }, [thought]);
 
             if (!thought) return null;
 
             const handleBrainstorm = async () => {
-                if (!chatInput.trim()) return;
-                
-                if (!key) return alert("API Key missing");
-
+                if (!chatInput.trim() || !key) return;
                 setIsThinking(true);
                 const userMsg = { role: 'user', content: chatInput, time: new Date().toISOString() };
                 const newLog = [...(thought.chatLog || []), userMsg];
@@ -421,14 +553,8 @@
                 setChatInput('');
 
                 try {
-                    const context = `USER PROFILE: ${JSON.stringify(profile)}\n\nORIGINAL NOTE:\n${thought.content}\n\nUSER QUESTION:\n${chatInput}\n\nPREVIOUS CHAT:\n${(thought.chatLog || []).map(m => `${m.role}: ${m.content}`).join('\n')}`;
-                    const sysPrompt = `You are a "Lateral Thinking Engine".
-                    CRITICAL PROTOCOL: ADAPT TO USER INTENT.
-                    1. **Chatter Mode:** If user input is simple (e.g., "Thanks", "Okay", "Cool"), reply briefly and conversationally. Do NOT use a framework.
-                    2. **Analysis Mode:** If user asks a question or brainstorms, use a random framework (Inversion, Second-Order Thinking, First Principles).
-                    Output Format for Analysis: [Framework Name]: Answer. Use Markdown.`;
-                    
-                    const response = await callGemini(key, context, sysPrompt);
+                    const context = `PROFILE: ${JSON.stringify(profile)}\nNOTE: ${thought.content}\nCHAT: ${(thought.chatLog || []).map(m => `${m.role}: ${m.content}`).join('\n')}`;
+                    const response = await callGemini(key, context, "System: Lateral Thinking Engine. Be brief and insightful.");
                     const aiMsg = { role: 'ai', content: response, time: new Date().toISOString() };
                     await dbOps.add({ ...thought, chatLog: [...newLog, aiMsg] });
                     onUpdate({ ...thought, chatLog: [...newLog, aiMsg] });
@@ -436,7 +562,7 @@
                 setIsThinking(false);
             };
 
-            const deleteChatMsg = (index) => {
+             const deleteChatMsg = (index) => {
                 requestConfirm("Delete this message?", async () => {
                     const newLog = thought.chatLog.filter((_, i) => i !== index);
                     const updatedThought = { ...thought, chatLog: newLog };
@@ -446,18 +572,13 @@
             };
 
             const handleSaveEdit = async () => {
-                const updatedThought = {
-                    ...thought,
-                    content: editContent,
-                    updatedAt: new Date().toISOString(),
-                    editHistory: [...(thought.editHistory || []), { content: thought.content, date: new Date().toISOString() }]
-                };
+                const updatedThought = { ...thought, content: editContent, updatedAt: new Date().toISOString() };
                 await dbOps.add(updatedThought);
                 onUpdate(updatedThought);
                 setIsEditing(false);
             };
 
-            const addTag = async () => {
+             const addTag = async () => {
                 if(!tagInput.trim()) return;
                 const newTags = [...(thought.tags || []), tagInput.trim()];
                 const updatedThought = { ...thought, tags: newTags };
@@ -481,14 +602,14 @@
                         <button onClick={onClose} className="p-2 -ml-2 text-zinc-400 hover:text-white flex items-center gap-1"><Icon name="ArrowLeft" /> <span className="text-sm font-semibold">Back</span></button>
                         <div className="flex items-center gap-2">
                             {isEditing ? <button onClick={handleSaveEdit} className="p-2 bg-blue-600 rounded-full text-white"><Icon name="Save" /></button> : <button onClick={() => setIsEditing(true)} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white"><Icon name="Pen" /></button>}
-                            <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${thought.type==='strategy'?'bg-blue-900/30 text-blue-400':thought.type==='raw'?'bg-zinc-800 text-zinc-400':thought.type==='refined'?'bg-green-900/30 text-green-400':'bg-purple-900/30 text-purple-400'}`}>{thought.type}</span>
+                            <span className="text-[10px] px-2 py-1 rounded font-bold uppercase bg-zinc-800 text-zinc-400">{thought.type}</span>
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto bg-black">
                         <div className="p-6 border-b border-zinc-800">
                             <div className="flex flex-wrap gap-4 text-zinc-500 text-xs mb-4 font-mono items-center">
-                                <span>Created: {new Date(thought.createdAt).toLocaleString()}</span>
-                                {thought.updatedAt && <span className="flex items-center gap-1 text-zinc-400"><Icon name="Clock" size={12}/> Edited: {new Date(thought.updatedAt).toLocaleDateString()} ({thought.editHistory?.length || 0})</span>}
+                                {thought.isArchived && <span className="text-yellow-500 flex items-center gap-1 font-bold border border-yellow-900 bg-yellow-900/20 px-2 py-1 rounded"><Icon name="Archive" size={12}/> ARCHIVED</span>}
+                                <span>{new Date(thought.createdAt).toLocaleString()}</span>
                             </div>
                             <div className="flex flex-wrap gap-2 mb-4">
                                 {(thought.tags || []).map(tag => (
@@ -498,23 +619,44 @@
                             </div>
                             {isEditing ? <textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="w-full h-[50vh] bg-zinc-900/50 text-zinc-200 p-4 rounded-xl border border-zinc-700 outline-none resize-none font-mono text-base"/> : <MarkdownRenderer content={thought.content} />}
                         </div>
+                        
                         <div className="p-6 pb-40">
+                             {/* DEEP SYNAPSE UI (New in v3.0) */}
+                            {thought.connections && thought.connections.length > 0 && (
+                                <div className="mb-8">
+                                    <div className="flex items-center gap-2 mb-3 opacity-50"><Icon name="Grid" size={14} className="text-purple-400" /><h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Neural Topology</h3></div>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {thought.connections.map((conn, i) => {
+                                            const target = allData ? allData.find(n => n.id === conn.targetId) : null;
+                                            if (!target) return null;
+                                            const styles = { 'EXTENSION': { c: 'text-blue-400', b: 'border-blue-900/50', i: 'Plus' }, 'FRICTION': { c: 'text-red-400', b: 'border-red-900/50', i: 'Zap' }, 'SPARK': { c: 'text-yellow-400', b: 'border-yellow-900/50', i: 'Sparkles' }, 'ECHO': { c: 'text-zinc-400', b: 'border-zinc-800', i: 'CornerDownRight' } };
+                                            const s = styles[conn.type] || styles['ECHO'];
+                                            return (
+                                                <button key={i} onClick={() => onClose() || onUpdate(null)} className={`text-left bg-zinc-900/40 border ${s.b} p-3 rounded-lg flex justify-between items-start group`}>
+                                                    <div><div className="text-xs text-zinc-300 group-hover:text-white transition-colors">{target.content.substring(0, 60)}...</div><div className="text-[10px] text-zinc-500 mt-1 italic">"{conn.reason}"</div></div>
+                                                    <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${s.c}`}><Icon name={s.i} size={10}/> {conn.type}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-2 mb-6"><Icon name="Zap" className="text-yellow-400" /><h3 className="text-sm font-bold text-zinc-300 uppercase tracking-widest">Neural Lab</h3></div>
                             <div className="space-y-4">
                                 {(thought.chatLog || []).map((msg, i) => (
                                     <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                                         <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.role === 'user' ? 'bg-blue-900 text-blue-100' : 'bg-zinc-900 border border-zinc-700 text-zinc-300'}`}>
-                                            {msg.role === 'ai' && <div className="text-[10px] font-bold text-yellow-500 mb-1 uppercase">AI Insight</div>}
                                             {msg.role === 'sentinel' && <div className="text-[10px] font-bold text-red-500 mb-1 uppercase flex items-center gap-1"><Icon name="Eye" size={10}/> Sentinel Watch</div>}
                                             <MarkdownRenderer content={msg.content} />
-                                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/10 opacity-70 text-[10px]">
+                                             <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/10 opacity-70 text-[10px]">
                                                 <span>{new Date(msg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                                                 <button onClick={(e) => {e.stopPropagation(); deleteChatMsg(i);}} className="p-1 hover:text-red-400 ml-2"><Icon name="Trash2" size={12}/></button>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
-                                {isThinking && <div className="text-zinc-500 text-xs animate-pulse ml-4">Generating insight...</div>}
+                                {isThinking && <div className="text-zinc-500 text-xs animate-pulse ml-4">Thinking...</div>}
                                 <div ref={chatEndRef} />
                             </div>
                         </div>
@@ -532,6 +674,67 @@
             );
         };
 
+        const HomeView = ({ profile, briefing, onNavigate, stats }) => {
+            const timeOfDay = getGreeting();
+            const hasBriefing = briefing && briefing.date === new Date().toDateString();
+
+            return (
+                <div className="p-6 pb-40 overflow-y-auto h-full animate-in fade-in duration-500">
+                    <div className="mb-8 mt-4">
+                        <div className="flex items-center gap-3 mb-2 text-zinc-400">
+                             {timeOfDay.includes("Night") ? <Icon name="Moon" size={18}/> : <Icon name="Sun" size={18}/>}
+                             <span className="text-xs font-mono uppercase tracking-widest">{timeOfDay}</span>
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-1">Welcome back, {profile?.name || 'Architect'}.</h1>
+                        <p className="text-zinc-500 text-sm">System is active. {stats.todayCount} thoughts captured today.</p>
+                    </div>
+                    
+                    <div className="mb-8">
+                         <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2"><Icon name="Brain" className="text-blue-500"/> Daily Briefing</h2>
+                            <span className="text-[10px] bg-zinc-900 border border-zinc-800 px-2 py-1 rounded text-zinc-500 font-mono">{hasBriefing ? 'ANALYSIS COMPLETE' : 'WAITING FOR DATA'}</span>
+                        </div>
+                        <div className="glass-panel rounded-2xl p-6 relative overflow-hidden">
+                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+                            {hasBriefing ? (
+                                <div className="space-y-4 relative z-10">
+                                    <div className="text-xs text-blue-400 font-bold uppercase">Prime Directive</div>
+                                    <p className="text-lg text-white font-medium leading-relaxed">{briefing.focus}</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                         {briefing.loops && briefing.loops.length > 0 && (
+                                            <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                                                <div className="text-xs text-orange-400 font-bold uppercase mb-2 flex gap-1 items-center"><Icon name="Refresh" size={12}/> Open Loops</div>
+                                                <ul className="space-y-2">
+                                                    {briefing.loops.map((loop, i) => (<li key={i} className="text-sm text-zinc-300 flex gap-2"><span className="text-zinc-600">•</span> {loop}</li>))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {briefing.trajectory && <div className="bg-black/30 p-3 rounded-lg"><div className="text-xs text-purple-400 font-bold uppercase mb-1">Trajectory</div><p className="text-xs text-zinc-300">{briefing.trajectory}</p></div>}
+                                    </div>
+                                </div>
+                            ) : <div className="text-center py-8 text-zinc-500 text-sm"><p>Capture more thoughts to generate your Neural Report.</p><button onClick={() => onNavigate('capture')} className="bg-zinc-100 text-black px-4 py-2 rounded-lg text-sm font-bold hover:scale-105 transition-transform mt-4">Start Capturing</button></div>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button onClick={() => onNavigate('capture')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
+                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="Pen" size={16}/></div>
+                            <div className="font-bold text-sm text-zinc-200">Quick Capture</div>
+                        </button>
+                        <button onClick={() => onNavigate('memory')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
+                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="Grid" size={16}/></div>
+                            <div className="font-bold text-sm text-zinc-200">Memory Bank</div>
+                        </button>
+                         <button onClick={() => onNavigate('profile')} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-left group transition-all">
+                            <div className="bg-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-zinc-700 transition-colors"><Icon name="User" size={16}/></div>
+                            <div className="font-bold text-sm text-zinc-200">The Mirror</div>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // PRESERVED VIEWS
         const FolderView = ({ structure, data, onOpenItem }) => {
             const [expanded, setExpanded] = useState({});
             const toggle = (key) => setExpanded(prev => ({...prev, [key]: !prev[key]}));
@@ -541,7 +744,7 @@
                         const item = data.find(d => d.id === id);
                         if (!item) return null;
                         return (
-                            <div key={id} onClick={() => onOpenItem(item.id)} className="ml-6 p-3 border-l border-zinc-800 hover:bg-zinc-900 cursor-pointer text-sm text-zinc-300 flex items-start gap-2">
+                            <div key={id} onClick={() => onOpenItem(item.id)} className={`ml-6 p-3 border-l border-zinc-800 hover:bg-zinc-900 cursor-pointer text-sm text-zinc-300 flex items-start gap-2 ${item.isArchived ? 'opacity-50 grayscale' : ''}`}>
                                 <Icon name="CornerDownRight" size={14} className="text-zinc-600 mt-1 shrink-0"/> <span className="line-clamp-1">{item.content}</span>
                             </div>
                         );
@@ -595,9 +798,10 @@
                                                     <button onClick={() => onBatchSelect(items.map(i => i.id))} className="text-zinc-500 hover:text-blue-400"><Icon name="CheckCircle" size={18}/></button>
                                                 </div>
                                                 {items.map(item => (
-                                                    <div key={item.id} onClick={() => onOpenItem(item.id)} className={`p-3 border-t border-zinc-800 hover:bg-zinc-800 cursor-pointer flex gap-3 ${selection.has(item.id) ? 'bg-blue-900/20' : ''}`}>
+                                                    <div key={item.id} onClick={() => onOpenItem(item.id)} className={`p-3 border-t border-zinc-800 hover:bg-zinc-800 cursor-pointer flex gap-3 ${selection.has(item.id) ? 'bg-blue-900/20' : ''} ${item.isArchived ? 'opacity-50' : ''}`}>
                                                         <span className="text-xs text-zinc-500 font-mono mt-1">{new Date(item.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                                                         <span className="text-sm text-zinc-300 line-clamp-1">{item.content}</span>
+                                                        {item.isArchived && <Icon name="Archive" size={12} className="text-yellow-600"/>}
                                                     </div>
                                                 ))}
                                             </div>
@@ -611,7 +815,7 @@
             );
         };
 
-        const ProfileView = ({ data = [], profile, goals, context, onUpdateProfile, onUpdateGoals, onUpdateContext, apiKey }) => {
+        const ProfileView = ({ data, profile, goals, context, onUpdateProfile, onUpdateGoals, onUpdateContext, apiKey }) => {
             const [isAnalysing, setIsAnalysing] = useState(false);
             const [name, setName] = useState(profile?.name || '');
             const [goalText, setGoalText] = useState(goals || '');
@@ -620,114 +824,32 @@
             const handleUpdateName = () => { onUpdateProfile({ ...profile, name }); alert("Identity Updated"); };
             const handleUpdateGoals = () => { onUpdateGoals(goalText); alert("Current Directives Saved"); };
             const handleUpdateContext = () => { onUpdateContext(contextText); alert("Codex Updated"); };
-
+             
             const renderSafe = (content) => {
                 if (typeof content === 'object') return JSON.stringify(content, null, 2);
                 return content;
             };
 
-            const calculateMetrics = (notes) => {
-                const now = new Date();
-                const totalNotes = notes.length;
-                
-                // 1. Circadian Rhythm (Night Owl Score)
-                const lateNightNotes = notes.filter(n => {
-                    const h = new Date(n.createdAt).getHours();
-                    return h >= 22 || h < 5;
-                }).length;
-                const nightOwlPercent = totalNotes > 0 ? Math.round((lateNightNotes / totalNotes) * 100) : 0;
-
-                // 2. Velocity
-                const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                const recentNotes = notes.filter(n => new Date(n.createdAt) > oneWeekAgo);
-                const velocity = Math.round((recentNotes.length / 7) * 10) / 10;
-
-                // 3. Depth Ratio
-                const deepNotes = notes.filter(n => n.content.length > 50).length;
-                const depthPercent = totalNotes > 0 ? Math.round((deepNotes / totalNotes) * 100) : 0;
-
-                return {
-                    totalAnalyzed: totalNotes,
-                    nightOwlPercent,
-                    velocity,
-                    depthPercent
-                };
-            };
-
             const runMirror = async () => {
                 if (!apiKey) return alert("API Key Needed");
-
-                const userOnlyNotes = data.filter(d => d.type === 'raw');
-                
-                // We take more data now to get a better picture
-                const inputNotes = userOnlyNotes.slice(0, 100); 
-
-                if (inputNotes.length < 5) return alert("Insufficient Data: Please capture at least 5 raw thoughts.");
-                
                 setIsAnalysing(true);
                 try {
-                    // STEP 1: CALCULATE REALITY (Hard Stats)
-                    const metrics = calculateMetrics(inputNotes);
-                    
-                    // STEP 2: PREPARE TEXT DATA
-                    const textData = inputNotes.map(d => {
-                        let text = `[${new Date(d.createdAt).toLocaleString()}] (Length: ${d.content.length}): ${d.content}`;
-                        if (d.chatLog && Array.isArray(d.chatLog)) {
-                            const userChats = d.chatLog
-                                .filter(msg => msg.role === 'user')
-                                .map(msg => `[User Follow-up]: ${msg.content}`)
-                                .join(" ");
-                            if (userChats) text += `\n${userChats}`;
-                        }
-                        return text;
-                    }).join('\n---\n');
-                    
-                    // STEP 3: CONSTRUCT THE DIFFERENTIAL PROMPT
-                    const previousProfileContext = profile ? JSON.stringify(profile) : "NO PREVIOUS PROFILE (New Analysis)";
-                    
-                    const systemPrompt = `
-                    ROLE: Lead Cognitive & Behavioral Scientist. 
-                    OBJECTIVE: Update the user's psychological profile using "Radical Honesty" and "Epsilon-Delta Framework".
-                    
-                    GLOBAL CONTEXT (The Codex): ${context || "Not provided."}
-                    CURRENT FOCUS (Epsilon): ${goals || "No current goals."}
-                    
-                    INPUT DATA:
-                    1. PREVIOUS PROFILE: Use this to detect CHANGES (Trajectory).
-                    2. HARD METRICS: Calculated from metadata. Use this to verify Intent vs Action.
-                    3. RAW LOGS: The user's actual stream-of-consciousness.
-                    
-                    METRICS TO ANALYZE:
-                    - Night Owl Index: ${metrics.nightOwlPercent}% of notes written late at night.
-                    - Consistency Velocity: ${metrics.velocity} notes/day.
-                    - Depth Ratio: ${metrics.depthPercent}% deep thoughts vs shallow tasks.
-                    
-                    INSTRUCTION:
-                    1. **Compare** current logs against the Previous Profile. Is the user spiraling or improving?
-                    2. **Correlate** Behavior (Short notes) with Cognition (Long notes).
-                    3. **Call out discrepancies.** If user says "I am working hard" but Velocity is low, point it out.
-                    4. **Epsilon-Delta Analysis:** For the User's Goals (Epsilon), what Delta parameters (focus, emotion, habits) need adjustment?
-                    
-                    OUTPUT JSON FORMAT:
-                    {
-                        "cognitive": "Analysis of thinking patterns, focus, and mental models. Mention changes from last profile.",
-                        "personality": "Emotional baseline and behavioral traits derived from the Hard Metrics + Text tone.",
-                        "trajectory": "Vector prediction: Where is the user heading based on the rate of change? Call out risks."
-                    }
-                    `;
-                    
-                    const res = await callGemini(apiKey, `PREVIOUS PROFILE:\n${previousProfileContext}\n\nRAW LOGS:\n${textData}`, systemPrompt, true);
+                    const textData = data.slice(0,50).map(d => `[${d.createdAt}] ${d.content}`).join('\n');
+                    const systemPrompt = `ROLE: Cognitive Scientist.
+                    CONTEXT: ${context || "None"}
+                    GOALS: ${goals || "None"}
+                    TASK: Analyze logs. Update profile using Epsilon-Delta Framework.
+                    OUTPUT JSON: { "cognitive": "thinking patterns", "personality": "emotional baseline", "trajectory": "vector prediction" }`;
+                    const res = await callGemini(apiKey, textData, systemPrompt, true);
                     const cleanRes = res.replace(/```json/g, '').replace(/```/g, '');
                     const analysis = JSON.parse(cleanRes);
-
                     const safeAnalysis = {
                         cognitive: typeof analysis.cognitive === 'object' ? JSON.stringify(analysis.cognitive) : analysis.cognitive,
                         personality: typeof analysis.personality === 'object' ? JSON.stringify(analysis.personality) : analysis.personality,
                         trajectory: typeof analysis.trajectory === 'object' ? JSON.stringify(analysis.trajectory) : analysis.trajectory,
                     };
-
                     onUpdateProfile({ ...profile, name, ...safeAnalysis, lastUpdate: new Date().toISOString() });
-                } catch(e) { alert("Mirror Analysis Failed: " + e.message); }
+                } catch(e) { alert("Mirror Analysis Failed"); }
                 setIsAnalysing(false);
             };
 
@@ -735,7 +857,7 @@
                 <div className="p-6 pb-40 overflow-y-auto h-full">
                     <div className="flex flex-col items-center mb-8">
                         <TheConstruct count={data?.length || 0} />
-                        <div className="mt-4 w-full max-w-xs">
+                         <div className="mt-4 w-full max-w-xs">
                             <label className="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-1 block">Identity</label>
                             <div className="flex gap-2">
                                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Enter your name" className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 w-full text-center text-white focus:border-blue-500 outline-none"/>
@@ -744,43 +866,22 @@
                         </div>
                     </div>
                     <div className="space-y-6">
-                        {/* CODEX SECTION */}
                         <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl relative group">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-blue-400 font-bold text-sm uppercase tracking-widest flex items-center gap-2"><Icon name="Book"/> The Codex (Identity & Context)</h3>
-                                <button onClick={handleUpdateContext} className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-300">Save Context</button>
-                            </div>
-                            <textarea 
-                                value={contextText} 
-                                onChange={e => setContextText(e.target.value)}
-                                placeholder="Who are you? (Permanent Context)&#10;- Life Story & Constraints&#10;- Schedule & Jobs&#10;- Long term Dreams&#10;- Needs & Wants&#10;Pour everything here. This is your User Manual."
-                                className="w-full h-48 bg-black/50 border border-zinc-700 rounded-xl p-3 text-sm text-zinc-200 focus:border-blue-500 outline-none resize-none leading-relaxed scrollbar-thin"
-                            />
+                            <div className="flex justify-between items-center mb-4"><h3 className="text-blue-400 font-bold text-sm uppercase tracking-widest flex items-center gap-2"><Icon name="Book"/> Codex (Context)</h3><button onClick={handleUpdateContext} className="text-xs bg-zinc-800 px-3 py-1 rounded text-zinc-300">Save</button></div>
+                            <textarea value={contextText} onChange={e => setContextText(e.target.value)} className="w-full h-32 bg-black/50 border border-zinc-700 rounded-xl p-3 text-sm text-zinc-200 outline-none resize-none" placeholder="Life story, constraints, permanent context..."/>
                         </div>
-
-                        {/* EPSILON SECTION */}
                         <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl relative group">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-yellow-500 font-bold text-sm uppercase tracking-widest flex items-center gap-2"><Icon name="Target"/> Epsilon (Current Directives)</h3>
-                                <button onClick={handleUpdateGoals} className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-300">Save Epsilon</button>
-                            </div>
-                            <textarea 
-                                value={goalText} 
-                                onChange={e => setGoalText(e.target.value)}
-                                placeholder="What is the mission right now? (e.g. 'Study for Math Exam', 'Finish Project X')"
-                                className="w-full h-24 bg-black/50 border border-zinc-700 rounded-xl p-3 text-sm text-zinc-200 focus:border-yellow-500 outline-none resize-none leading-relaxed"
-                            />
+                            <div className="flex justify-between items-center mb-4"><h3 className="text-yellow-500 font-bold text-sm uppercase tracking-widest flex items-center gap-2"><Icon name="Target"/> Epsilon (Goals)</h3><button onClick={handleUpdateGoals} className="text-xs bg-zinc-800 px-3 py-1 rounded text-zinc-300">Save</button></div>
+                            <textarea value={goalText} onChange={e => setGoalText(e.target.value)} className="w-full h-32 bg-black/50 border border-zinc-700 rounded-xl p-3 text-sm text-zinc-200 outline-none resize-none" placeholder="Current mission parameters..."/>
                         </div>
-
-                        <button onClick={runMirror} disabled={isAnalysing} className="w-full py-4 bg-gradient-to-r from-indigo-900 to-purple-900 border border-purple-500/30 rounded-xl text-purple-200 font-bold tracking-wide shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">{isAnalysing ? <Icon name="Refresh" className="animate-spin"/> : <Icon name="Sparkles"/>} {isAnalysing ? 'Running Deep Diagnostics...' : 'Update Mirror'}</button>
-                        
-                        {profile?.cognitive ? (
+                        <button onClick={runMirror} disabled={isAnalysing} className="w-full py-4 bg-purple-900/30 border border-purple-500/30 rounded-xl text-purple-200 font-bold">{isAnalysing ? 'Analysing...' : 'Update Mirror'}</button>
+                        {profile?.cognitive && (
                             <>
-                                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl"><h3 className="text-blue-400 font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="Brain"/> Cognitive Profile</h3><p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{renderSafe(profile.cognitive)}</p></div>
-                                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl"><h3 className="text-pink-400 font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="User"/> Personality Core</h3><p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{renderSafe(profile.personality)}</p></div>
-                                {profile.trajectory && <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl"><h3 className="text-green-400 font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="Target"/> Evolutionary Trajectory</h3><p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{renderSafe(profile.trajectory)}</p></div>}
+                            <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl space-y-4"><h3 className="text-blue-400 font-bold text-sm uppercase tracking-widest flex items-center gap-2"><Icon name="Brain"/> Cognitive Profile</h3><p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{renderSafe(profile.cognitive)}</p></div>
+                            <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl space-y-4"><h3 className="text-pink-400 font-bold text-sm uppercase tracking-widest flex items-center gap-2"><Icon name="User"/> Personality Core</h3><p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">{renderSafe(profile.personality)}</p></div>
+                             {profile.trajectory && <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl"><h3 className="text-green-400 font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="Target"/> Evolutionary Trajectory</h3><p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{renderSafe(profile.trajectory)}</p></div>}
                             </>
-                        ) : <div className="text-center text-zinc-500 py-10 opacity-50"><p>The Mirror is foggy.</p><p className="text-xs mt-2">Capture 5+ thoughts and run the analysis.</p></div>}
+                        )}
                     </div>
                 </div>
             );
@@ -795,142 +896,53 @@
             const [dailyBriefing, setDailyBriefing] = useState(null);
             const [input, setInput] = useState('');
             const [search, setSearch] = useState('');
-            const [sel, setSel] = useState(new Set());
             const [key, setKey] = useState('');
-            const [loading, setLoading] = useState(false);
-            const [showSettings, setShowSettings] = useState(false);
-            const [readingId, setReadingId] = useState(null);
             const [activeTab, setActiveTab] = useState('home');
             const [viewMode, setViewMode] = useState('grid');
-            const [structure, setStructure] = useState(null);
-            const [error, setError] = useState(null);
+            const [readingId, setReadingId] = useState(null);
             const [isAppLoading, setIsAppLoading] = useState(true);
-            const [loadMessage, setLoadMessage] = useState("Initializing System...");
             const [sentinelAlert, setSentinelAlert] = useState(null);
-            const fileInputRef = useRef(null);
-            
-            // CONFIRMATION STATE
+            const [silentMode, setSilentMode] = useState(false);
+            const [sel, setSel] = useState(new Set());
+            const [showSettings, setShowSettings] = useState(false);
+            const [loading, setLoading] = useState(false);
+            const [structure, setStructure] = useState(null);
+            const [showArchived, setShowArchived] = useState(false);
+            const [hasMore, setHasMore] = useState(true);
             const [confirmState, setConfirmState] = useState({ isOpen: false, message: '', onConfirm: null });
-
-            if (error) return <div className="p-6 text-red-500"><h1>Crash Detected</h1><p>{error.message}</p><button onClick={()=>window.location.reload()} className="bg-white text-black p-2 mt-4 rounded">Reload</button></div>;
-
+            const fileInputRef = useRef(null);
+            const [loadMessage, setLoadMessage] = useState("Initializing System...");
+            
             useEffect(() => { 
                 const init = async () => {
-                    try {
-                        const safetyTimer = setTimeout(() => {
-                           if (isAppLoading) setIsAppLoading(false);
-                        }, 5000);
+                    let k = localStorage.getItem('gemini_key') || (typeof apiKey !== 'undefined' ? apiKey : '');
+                    if (k) setKey(k);
+                    
+                    setLoadMessage("Retrieving Neural Maps...");
+                    const batch = await dbOps.getBatch(null, 20, showArchived);
+                    setData(batch);
+                    setHasMore(batch.length === 20);
+                    
+                    const p = await dbOps.getMeta('user_profile'); if(p) setProfile(p);
+                    const g = await dbOps.getMeta('user_goals'); if(g) setGoals(g);
+                    const c = await dbOps.getMeta('user_context'); if(c) setContext(c);
+                    const b = await dbOps.getMeta('daily_briefing'); if(b) setDailyBriefing(b);
+                    const s = await dbOps.getMeta('folderStructure'); if(s) setStructure(s);
 
-                        let currentKey = typeof apiKey !== 'undefined' && apiKey ? apiKey : '';
-                        if (!currentKey) currentKey = localStorage.getItem('gemini_key');
-
-                        if (currentKey) {
-                            setKey(currentKey); 
-                        } else {
-                            setShowSettings(true);
-                        }
-                        
-                        setLoadMessage("Retrieving Neural Maps...");
-                        const d = await dbOps.getAll();
-                        setData(d);
-                        
-                        setLoadMessage("Loading Metacognition...");
-                        const savedStruct = await dbOps.getMeta('folderStructure');
-                        if(savedStruct) setStructure(savedStruct);
-                        const savedProfile = await dbOps.getMeta('user_profile');
-                        if(savedProfile) setProfile(savedProfile);
-                        const savedGoals = await dbOps.getMeta('user_goals');
-                        if(savedGoals) setGoals(savedGoals);
-                        const savedContext = await dbOps.getMeta('user_context');
-                        if(savedContext) setContext(savedContext);
-                        
-                        const savedBriefing = await dbOps.getMeta('daily_briefing');
-                        setDailyBriefing(savedBriefing);
-
-                        if (currentKey && d.length > 5) {
-                            const today = new Date().toDateString();
-                            if (!savedBriefing || savedBriefing.date !== today) {
-                                setLoadMessage("Analyzing Daily Trajectory...");
-                                await runDailyAnalysis(currentKey, d, savedProfile);
-                            }
-                        }
-                        
-                        clearTimeout(safetyTimer);
-                        setTimeout(() => setIsAppLoading(false), 1000);
-                    } catch(e) { 
-                        console.error(e);
-                        setError(e); 
+                    if (k && batch.length > 5 && (!b || b.date !== new Date().toDateString())) {
+                         setLoadMessage("Analyzing Daily Trajectory...");
+                         await runDailyAnalysis(k, batch, p);
                     }
+                    setIsAppLoading(false);
                 };
                 init();
-            }, []);
+            }, [showArchived]);
 
-            useEffect(() => { try { if(key && key !== apiKey) localStorage.setItem('gemini_key', key); } catch(e){} }, [key]);
-            
             useEffect(() => {
-                if (!search.trim()) { setFilteredData(data); return; }
-                const lower = search.toLowerCase();
-                setFilteredData(data.filter(d => d.content.toLowerCase().includes(lower) || (d.tags && d.tags.some(t => t.toLowerCase().includes(lower)))));
+                 if (!search.trim()) { setFilteredData(data); return; }
+                 const lower = search.toLowerCase();
+                 setFilteredData(data.filter(d => d.content.toLowerCase().includes(lower) || d.tags?.some(t => t.toLowerCase().includes(lower))));
             }, [search, data]);
-
-            // --- SENTINEL LOGIC ---
-            const runSentinel = async (noteContent, currentGoals, currentContext, noteId) => {
-                if (!key || (!currentGoals && !currentContext)) return;
-
-                const sysPrompt = `
-                ROLE: "The Sentinel". An automated Watchman System.
-                FRAMEWORK: Epsilon-Delta. 
-                
-                GLOBAL CONTEXT (The Codex): ${currentContext || "Not provided."}
-                CURRENT FOCUS (Epsilon): ${currentGoals || "No specific focus."}
-                
-                YOUR JOB:
-                1. Read the user's latest note: "${noteContent}".
-                2. Check if it conflicts with Epsilon (Goals) or indicates Overwhelm/Crisis.
-                3. DECIDE: Is immediate intervention necessary? 
-                
-                INTERVENTION RULES:
-                - If User is off-track/lazy -> CRITICIZE (Stern).
-                - If User is overwhelmed/sad -> MOTIVATE (Shift Delta/Perspective).
-                - If User is winning -> PRAISE (Reinforce).
-                - If Note is neutral/mundane -> RETURN NULL (Silence).
-
-                OUTPUT JSON ONLY:
-                { "reaction": "CRITIC|PRAISE|MOTIVATE|NONE", "message": "Short, punchy message (max 15 words)." }
-                `;
-
-                try {
-                    const res = await callGemini(key, "Analyze this note.", sysPrompt, true);
-                    const cleanRes = res.replace(/```json/g, '').replace(/```/g, '');
-                    const result = JSON.parse(cleanRes);
-
-                    if (result.reaction && result.reaction !== 'NONE') {
-                        setSentinelAlert({ type: result.reaction, message: result.message });
-                        
-                        const sentinelMsg = { 
-                            role: 'sentinel', 
-                            content: `**[${result.reaction}]** ${result.message}`, 
-                            time: new Date().toISOString() 
-                        };
-                        
-                        const db = await dbOps.init();
-                        const tx = db.transaction(STORE, 'readwrite');
-                        const store = tx.objectStore(STORE);
-                        const req = store.get(noteId);
-                        
-                        req.onsuccess = () => {
-                            const item = req.result;
-                            if (item) {
-                                item.chatLog = item.chatLog ? [...item.chatLog, sentinelMsg] : [sentinelMsg];
-                                store.put(item);
-                                setData(prev => prev.map(d => d.id === noteId ? item : d));
-                            }
-                        };
-
-                        setTimeout(() => setSentinelAlert(null), 8000); 
-                    }
-                } catch (e) { console.error("Sentinel failed", e); }
-            };
 
             const runDailyAnalysis = async (apiKey, currentData, userProfile) => {
                 try {
@@ -939,11 +951,10 @@
                     const prompt = `Role: Executive Function Assistant. Task: Generate a Morning Report based on recent thoughts. 
                     Output JSON: {
                         "date": "${new Date().toDateString()}",
-                        "loops": ["List 2-3 specific open loops or unfinished thoughts from the data"],
+                        "loops": ["List 2-3 specific open loops or unfinished thoughts"],
                         "focus": "One sentence daily prime directive / focus.",
                         "trajectory": "One sentence regarding long-term alignment."
                     }`;
-                    
                     const res = await callGemini(apiKey, context, prompt, true);
                     const cleanRes = res.replace(/```json/g, '').replace(/```/g, '');
                     const briefing = JSON.parse(cleanRes);
@@ -952,73 +963,104 @@
                 } catch (e) { console.error("Briefing failed", e); }
             };
 
-            const load = async () => { 
-                try { 
-                    const d = await dbOps.getAll();
-                    setData(d);
-                    const savedStruct = await dbOps.getMeta('folderStructure');
-                    if(savedStruct) setStructure(savedStruct);
-                    const savedProfile = await dbOps.getMeta('user_profile');
-                    if(savedProfile) setProfile(savedProfile);
-                    const savedGoals = await dbOps.getMeta('user_goals');
-                    if(savedGoals) setGoals(savedGoals);
-                    const savedContext = await dbOps.getMeta('user_context');
-                    if(savedContext) setContext(savedContext);
-                } catch(e){ setError(e); } 
+            // --- V3.0 CORE INTELLIGENCE LOOP ---
+            const runSentinel = async (noteContent, noteId) => {
+                if (!key || silentMode) return;
+                
+                // 1. GATEKEEPER: Is this worth judging?
+                const isSignificant = await checkSignificance(noteContent, key);
+                if (!isSignificant) return; 
+
+                // 2. CONTEXT LOADER: Grab evidence
+                // We use 'data' here which is the current memory state
+                const tags = await generateConcepts(noteContent, key);
+                const relatedNotes = findCandidates(tags, data);
+                const evidence = relatedNotes.map(n => `[${n.createdAt}] ${n.content}`).join('\n');
+                
+                const sysPrompt = `
+                IDENTITY: "The Sentinel". Future Version of User.
+                MODE: Commander / Disciplinarian.
+                
+                USER PROFILE (Codex): ${context || "Unknown"}
+                CURRENT MISSION (Goals): ${goals || "None"}
+                PSYCHOLOGY (Mirror): ${JSON.stringify(profile)}
+                
+                PAST EVIDENCE:
+                ${evidence}
+                
+                TASK: Judge the user's latest note: "${noteContent}".
+                1. Did they advance the Mission?
+                2. Is this a recurring pattern (see Evidence)?
+                3. Are they lying/procrastinating?
+                
+                OUTPUT JSON: { "reaction": "CRITIC|PRAISE|MOTIVATE|NONE", "message": "Punchy, direct feedback (max 20 words)." }
+                `;
+
+                try {
+                    const res = await callGemini(key, "Judge", sysPrompt, true);
+                    const clean = res.replace(/```json/g, '').replace(/```/g, '');
+                    const result = JSON.parse(clean);
+
+                    if (result.reaction && result.reaction !== 'NONE') {
+                        setSentinelAlert({ type: result.reaction, message: result.message });
+                        const msg = { role: 'sentinel', content: `**[${result.reaction}]** ${result.message}`, time: new Date().toISOString() };
+                        
+                        // Update in DB
+                        const db = await dbOps.init();
+                        const tx = db.transaction(STORE, 'readwrite');
+                        const store = tx.objectStore(STORE);
+                        const req = store.get(noteId);
+                        req.onsuccess = () => {
+                             const item = req.result;
+                             if(item) {
+                                 item.chatLog = item.chatLog ? [...item.chatLog, msg] : [msg];
+                                 store.put(item);
+                                 setData(prev => prev.map(d => d.id === noteId ? item : d));
+                             }
+                        };
+                        setTimeout(() => setSentinelAlert(null), 8000);
+                    }
+                } catch(e) { console.error("Sentinel Error", e); }
             };
-            
+
             const add = async () => {
                 if(!input.trim()) return;
-                try {
-                    const newId = generateUUID();
-                    const newNote = { id: newId, content:input, createdAt:new Date().toISOString(), type:'raw', tags: [] };
-                    await dbOps.add(newNote);
-                    setInput(''); 
-                    
-                    setData(prev => [newNote, ...prev]);
-                    
-                    // Trigger Sentinel with full context
-                    runSentinel(input, goals, context, newId);
+                const newId = generateUUID();
+                const newNote = { id: newId, content:input, createdAt:new Date().toISOString(), type:'raw', tags: [], connections: [] };
+                
+                // 1. Optimistic UI Update
+                await dbOps.add(newNote);
+                setData(prev => [newNote, ...prev]);
+                setInput('');
+                if(window.innerWidth < 768) setActiveTab('memory');
 
-                    if(window.innerWidth < 768) setActiveTab('memory');
-                } catch(e) { alert("Save failed: "+e.message); }
-            };
+                // 2. Intelligence Loop (Background)
+                if (key && !silentMode) {
+                    // A. Generate Tags & Connections
+                    const tags = await generateConcepts(newNote.content, key);
+                    const candidates = findCandidates(tags, data); 
+                    const links = await classifyConnections(newNote, candidates, key);
+                    
+                    const enrichedNote = { ...newNote, tags: tags, connections: links };
+                    await dbOps.add(enrichedNote);
+                    setData(prev => prev.map(d => d.id === newId ? enrichedNote : d));
 
-            const handleImport = async (e) => {
-                const file = e.target.files[0];
-                if(!file) return;
-                try {
-                    const count = await dbOps.import(file);
-                    alert(`Restored ${count} thoughts!`);
-                    load();
-                } catch(err) { alert("Import Failed: " + err.message); }
+                    // B. Run Sentinel (Commander)
+                    runSentinel(newNote.content, newId);
+                }
             };
 
             const toggleSel = (e, id) => { e.stopPropagation(); const s = new Set(sel); s.has(id)?s.delete(id):s.add(id); setSel(s); };
+            const batchSelect = (ids) => { const newSel = new Set(sel); ids.forEach(id => newSel.add(id)); setSel(newSel); };
+            const deleteSelected = () => { requestConfirm(`Permanently delete ${sel.size} items?`, async () => { for(const id of sel) await dbOps.del(id); setSel(new Set()); window.location.reload(); }); };
+            const requestConfirm = (message, action) => { setConfirmState({ isOpen: true, message, onConfirm: () => { action(); setConfirmState({isOpen:false, message:'', onConfirm:null}); } }); };
+            const handleImport = async (e) => { const file = e.target.files[0]; if(!file) return; try { await dbOps.import(file); window.location.reload(); } catch(err) { alert("Import Failed"); } };
             
-            const batchSelect = (ids) => {
-                const newSel = new Set(sel);
-                ids.forEach(id => newSel.add(id));
-                setSel(newSel);
-            };
-
-            const requestConfirm = (message, action) => {
-                setConfirmState({ isOpen: true, message, onConfirm: () => { action(); setConfirmState({isOpen:false, message:'', onConfirm:null}); } });
-            };
-
-            const deleteSelected = () => {
-                requestConfirm(`Permanently delete ${sel.size} items?`, async () => {
-                    for(const id of sel) await dbOps.del(id);
-                    setSel(new Set());
-                    load();
-                });
-            };
-
             const runOrganizer = async () => {
                 if(!key) return setShowSettings(true);
                 setLoading(true);
                 try {
-                    const simplifiedData = data.map(d => ({id: d.id, text: d.content.substring(0, 150)}));
+                    const simplifiedData = data.filter(d => !d.isArchived).map(d => ({id: d.id, text: d.content.substring(0, 150)}));
                     const prompt = `Role: Chief Librarian. Organize these notes into logical JSON directory. Input: ${JSON.stringify(simplifiedData)}. Format: { "Category": { "Sub": ["id"] } }. Return ONLY JSON.`;
                     let res = await callGemini(key, "Organize", prompt, true);
                     res = res.replace(/```json/g, '').replace(/```/g, '');
@@ -1030,75 +1072,70 @@
                 setLoading(false);
             };
 
-            const updateProfile = async (newProfile) => {
-                setProfile(newProfile);
-                await dbOps.saveMeta('user_profile', newProfile);
-            };
-            
-            const updateGoals = async (newGoals) => {
-                setGoals(newGoals);
-                await dbOps.saveMeta('user_goals', newGoals);
+             const runArchivist = async () => {
+                if (!key) return alert("API Key Required");
+                setLoading(true);
+                try {
+                    const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                    const allNotes = await dbOps.getAll(); 
+                    const oldNotes = allNotes.filter(n => n.type === 'raw' && !n.isArchived && new Date(n.createdAt) < thirtyDaysAgo);
+                    if (oldNotes.length < 5) { setLoading(false); return alert("Archivist: Not enough old notes to compress."); }
+                    const textBlock = oldNotes.map(n => `[${n.createdAt}] ${n.content}`).join("\n");
+                    const prompt = `System: You are an Archivist. Compress these ${oldNotes.length} logs into a "Monthly Digest". Markdown.`;
+                    const summary = await callGemini(key, textBlock, prompt);
+                    const summaryNote = { id: generateUUID(), content: `# 🗄️ Archive Summary\n${summary}`, createdAt: new Date().toISOString(), type: 'refined', tags: ['archive', 'summary'] };
+                    await dbOps.add(summaryNote);
+                    for (const note of oldNotes) { await dbOps.add({ ...note, isArchived: true }); }
+                    alert(`Archivist: Compressed ${oldNotes.length} notes.`); window.location.reload(); 
+                } catch (e) { alert("Archivist Failed: " + e.message); setLoading(false); }
             };
 
-            const updateContext = async (newContext) => {
-                setContext(newContext);
-                await dbOps.saveMeta('user_context', newContext);
-            };
-
-            const runAI = async (mode) => {
+             const runAI = async (mode) => {
                 if(!key) return setShowSettings(true);
                 setLoading(true);
                 try {
                     const txt = data.filter(t=>sel.has(t.id)).map(t=>t.content).join('\n---\n');
-                    const profileContext = profile ? `USER CONTEXT: Name: ${profile.name}. Cognitive Profile: ${profile.cognitive}. Personality: ${profile.personality}.` : "";
-                    const prompts = {
-                        synthesize: `${profileContext} Role: Essentialist. Apply 80/20 rule. Synthesize notes into ONE high-impact Markdown document. Use bold headers and bullets.`,
-                        pattern: `${profileContext} Role: Systems Thinker. Find connections, causal loops, or contradictions.`,
-                        challenge: `${profileContext} Role: Red Team. Pre-Mortem analysis. Assume failure and explain why.`,
-                        strategy: `${profileContext} Role: Grandmaster Strategist. Task: Apply OODA Loop. Be aware of user's bias.`
-                    };
+                    const profileContext = profile ? `USER CONTEXT: Name: ${profile.name}.` : "";
+                    const prompts = { synthesize: `${profileContext} Role: Essentialist. Synthesize notes.`, pattern: `${profileContext} Role: Systems Thinker. Find patterns.`, challenge: `${profileContext} Role: Red Team. Critique.`, strategy: `${profileContext} Role: Strategist. Apply OODA.` };
                     const res = await callGemini(key, txt, prompts[mode]);
                     await dbOps.add({ id: generateUUID(), content:res, createdAt:new Date().toISOString(), type:mode==='synthesize'?'refined':mode==='strategy'?'strategy':'analysis', tags: [] });
-                    if(mode==='synthesize') {
-                        requestConfirm("Synthesis complete. Delete original raw notes to clean up?", async () => {
-                            for(const id of sel) await dbOps.del(id);
-                            setSel(new Set()); load();
-                        });
-                    } else {
-                        setSel(new Set()); load();
-                    }
+                    setSel(new Set()); window.location.reload();
                 } catch(e) { alert(e.message); }
                 setLoading(false);
             };
 
-            const handleNoteUpdate = (updatedNote) => { setData(prev => prev.map(item => item.id === updatedNote.id ? updatedNote : item)); };
-
-            const currentIndex = useMemo(() => data.findIndex(t => t.id === readingId), [data, readingId]);
-            const readingItem = data[currentIndex];
-            const hasNext = currentIndex > 0;
-            const hasPrev = currentIndex > -1 && currentIndex < data.length - 1;
+            const loadMore = async () => {
+                if (data.length === 0) return;
+                const lastNote = data[data.length - 1]; 
+                const nextBatch = await dbOps.getBatch(lastNote.createdAt, 20, showArchived); 
+                if (nextBatch.length < 20) setHasMore(false);
+                setData(prev => [...prev, ...nextBatch]);
+            };
 
             if (isAppLoading) return <LoadingScreen message={loadMessage} />;
 
             if(showSettings) return (
                 <div className="min-h-screen flex items-center justify-center p-6 bg-black">
                     <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4">
-                        <div className="text-center text-white font-bold text-xl mb-4">Unlock Mind Palace</div>
-                        <input type="password" placeholder="Gemini API Key" value={key} onChange={e=>setKey(e.target.value)} className="w-full bg-black border border-zinc-700 p-3 rounded text-white"/>
-                        <button onClick={()=>key && setShowSettings(false)} className="w-full bg-white text-black font-bold p-3 rounded">Enter</button>
+                        <div className="flex justify-between items-center mb-4"><div className="text-white font-bold text-xl">System Settings</div><button onClick={()=>setShowSettings(false)}><Icon name="X" className="text-zinc-500"/></button></div>
+                        <div className="space-y-2"><label className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Neural Link (API Key)</label><input type="password" placeholder="Gemini API Key" value={key} onChange={e=>setKey(e.target.value)} className="w-full bg-black border border-zinc-700 p-3 rounded text-white"/></div>
+                        <div className="pt-4 border-t border-zinc-800 space-y-4"><div className="flex justify-between items-center"><div><div className="text-sm font-bold text-white flex items-center gap-2"><Icon name="Archive" size={16}/> The Archivist</div><div className="text-xs text-zinc-500">Compress old raw notes.</div></div><button onClick={runArchivist} className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Run Now</button></div></div>
+                        <button onClick={()=>key && setShowSettings(false)} className="w-full bg-white text-black font-bold p-3 rounded mt-4">Return to Interface</button>
                     </div>
                 </div>
             );
 
-            return (
-                <div className="min-h-screen bg-black text-zinc-200 flex flex-col md:flex-row pb-20 md:pb-0 safe-top">
-                    <ConfirmModal isOpen={confirmState.isOpen} message={confirmState.message} onConfirm={confirmState.onConfirm} onCancel={() => setConfirmState({isOpen:false, message:'', onConfirm:null})} />
-                    
-                    <SentinelAlert alert={sentinelAlert} onClose={() => setSentinelAlert(null)} />
+            const readingItem = data.find(d => d.id === readingId);
+            const currentIndex = data.findIndex(d => d.id === readingId);
 
-                    <FullScreenReader thought={readingItem} onClose={() => setReadingId(null)} onNext={() => setReadingId(data[currentIndex - 1].id)} onPrev={() => setReadingId(data[currentIndex + 1].id)} hasNext={hasNext} hasPrev={hasPrev} onUpdate={handleNoteUpdate} profile={profile} requestConfirm={requestConfirm} />
+            return (
+                <div className="min-h-screen bg-black text-zinc-200 flex flex-col md:flex-row safe-top">
+                    <ConfirmModal isOpen={confirmState.isOpen} message={confirmState.message} onConfirm={confirmState.onConfirm} onCancel={() => setConfirmState({isOpen:false, message:'', onConfirm:null})} />
+                    <SentinelAlert alert={sentinelAlert} onClose={() => setSentinelAlert(null)} />
+                    <FullScreenReader thought={readingItem} onClose={() => setReadingId(null)} onNext={() => setReadingId(data[currentIndex - 1].id)} onPrev={() => setReadingId(data[currentIndex + 1].id)} hasNext={currentIndex > 0} hasPrev={currentIndex < data.length - 1} onUpdate={(u) => setData(p => p.map(d => d.id === u.id ? u : d))} profile={profile} requestConfirm={requestConfirm} allData={data} />
                     
-                    <div className={`w-full md:w-96 bg-zinc-900/50 border-b md:border-r border-zinc-800 flex-col h-[calc(100vh-80px)] md:h-screen shrink-0 ${activeTab === 'capture' ? 'flex' : 'hidden md:flex'}`}>
+                    {/* SIDEBAR / CAPTURE */}
+                    <div className={`w-full md:w-96 bg-zinc-900/50 border-r border-zinc-800 flex-col h-[calc(100vh-80px)] md:h-screen shrink-0 ${activeTab === 'capture' ? 'flex' : 'hidden md:flex'}`}>
                         <div className="p-4 flex justify-between items-center border-b border-zinc-800">
                             <span className="font-bold flex gap-2 items-center text-white"><Icon name="Brain"/> Mind Palace</span>
                             <div className="flex gap-2">
@@ -1109,83 +1146,66 @@
                                 <button onClick={()=>setShowSettings(true)}><Icon name="Settings" className="text-zinc-500 hover:text-white"/></button>
                             </div>
                         </div>
-                        <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto">
-                            <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Dump thoughts..." className="w-full h-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-base focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed" />
-                            <button onClick={add} disabled={!input} className="w-full bg-zinc-100 text-black font-bold py-4 rounded-xl flex justify-center gap-2 items-center shrink-0 active:scale-95 transition-transform"><Icon name="Plus"/> Save</button>
+                        <div className="p-4 flex-1 flex flex-col gap-4">
+                            <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Input stream..." className="w-full h-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-base focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed" />
+                            <div className="flex gap-2">
+                                <button onClick={() => setSilentMode(!silentMode)} className={`p-4 rounded-xl ${silentMode ? 'bg-zinc-800 text-zinc-500' : 'bg-green-900/30 text-green-400'}`}>{silentMode ? <Icon name="EyeOff"/> : <Icon name="Eye"/>}</button>
+                                <button onClick={add} disabled={!input} className="flex-1 bg-zinc-100 text-black font-bold py-4 rounded-xl flex justify-center gap-2 items-center"><Icon name="Plus"/> Save</button>
+                            </div>
                         </div>
                     </div>
 
+                    {/* MAIN CONTENT */}
                     <div className={`flex-1 bg-black flex-col h-[calc(100vh-80px)] md:h-screen relative ${activeTab !== 'capture' ? 'flex' : 'hidden md:flex'}`}>
-                        {activeTab === 'home' && (
-                             <HomeView 
-                                profile={profile} 
-                                briefing={dailyBriefing} 
-                                onNavigate={setActiveTab} 
-                                stats={{todayCount: data.filter(d => new Date(d.createdAt).toDateString() === new Date().toDateString()).length}}
-                             />
-                        )}
-                        {activeTab === 'profile' && (
-                            <ProfileView data={data} profile={profile} goals={goals} context={context} onUpdateProfile={updateProfile} onUpdateGoals={updateGoals} onUpdateContext={updateContext} apiKey={key} />
-                        )} 
+                        {activeTab === 'home' && <HomeView profile={profile} briefing={dailyBriefing} stats={{todayCount: data.filter(d => new Date(d.createdAt).toDateString() === new Date().toDateString()).length}} onNavigate={setActiveTab} />}
+                        {activeTab === 'profile' && <ProfileView data={data} profile={profile} goals={goals} context={context} onUpdateProfile={p=>{setProfile(p); dbOps.saveMeta('user_profile',p)}} onUpdateGoals={g=>{setGoals(g); dbOps.saveMeta('user_goals',g)}} onUpdateContext={c=>{setContext(c); dbOps.saveMeta('user_context',c)}} apiKey={key} />}
                         {activeTab === 'memory' && (
                             <>
-                                {loading && <div className="absolute inset-0 bg-black/80 z-40 flex items-center justify-center flex-col"><Icon name="Brain" className="animate-spin text-white mb-4" size={48}/><span className="text-zinc-400 animate-pulse">Processing...</span></div>}
                                 <div className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 bg-black/90 backdrop-blur z-10 sticky top-0 shrink-0 gap-4">
-                                    <div className="flex-1 relative">
-                                        <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
-                                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search memory..." className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2 text-sm focus:border-zinc-600 outline-none" />
-                                    </div>
-                                    <div className="flex bg-zinc-900 rounded-lg p-1 gap-1 shrink-0">
-                                        <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md ${viewMode === 'grid' || search ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}><Icon name="Grid" size={16} /></button>
-                                        <button onClick={() => setViewMode('calendar')} className={`p-1.5 rounded-md ${viewMode === 'calendar' && !search ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}><Icon name="Calendar" size={16} /></button>
-                                        <button onClick={() => setViewMode('folder')} disabled={!!search} className={`p-1.5 rounded-md ${viewMode === 'folder' && !search ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300 disabled:opacity-30'}`}><Icon name="Folder" size={16} /></button>
+                                    <div className="flex-1 relative"><Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2 text-sm outline-none" /></div>
+                                    <div className="flex bg-zinc-900 rounded-lg p-1 gap-1">
+                                        <button onClick={() => setShowArchived(!showArchived)} className={`p-1.5 rounded-md ${showArchived ? 'bg-yellow-900/50 text-yellow-500' : 'text-zinc-500 hover:text-zinc-300'}`}><Icon name="Box" size={16} /></button>
+                                        <div className="w-px h-6 bg-zinc-800 mx-1"></div>
+                                        <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md ${viewMode === 'grid' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Icon name="Grid" size={16} /></button>
+                                        <button onClick={() => setViewMode('calendar')} className={`p-1.5 rounded-md ${viewMode === 'calendar' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Icon name="Calendar" size={16} /></button>
+                                        <button onClick={() => setViewMode('folder')} className={`p-1.5 rounded-md ${viewMode === 'folder' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Icon name="Folder" size={16} /></button>
+                                        {/* NEW: Constellation Button */}
+                                        <button onClick={() => setViewMode('constellation')} className={`p-1.5 rounded-md ${viewMode === 'constellation' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-white'}`}><Icon name="Sparkles" size={16} /></button>
                                     </div>
                                 </div>
-                                <div className="flex-1 overflow-y-auto content-start">
-                                    {viewMode === 'folder' && !search ? (
-                                        structure ? (
-                                            <>
-                                                <div className="p-4 flex justify-between items-center border-b border-zinc-800/50">
-                                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Smart Directory</span>
-                                                    <button onClick={runOrganizer} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"><Icon name="Refresh" size={12}/> Re-Organize</button>
-                                                </div>
-                                                <FolderView structure={structure} data={data} onOpenItem={setReadingId} />
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center h-full text-zinc-500 space-y-4 p-8 text-center">
-                                                <Icon name="Folder" size={48} className="opacity-20"/>
-                                                <p>No structure yet.</p>
-                                                <button onClick={runOrganizer} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20">Run Auto-Organizer</button>
-                                            </div>
-                                        )
-                                    ) : viewMode === 'calendar' && !search ? (
+                                <div className="flex-1 overflow-y-auto relative bg-black">
+                                    {viewMode === 'constellation' ? (
+                                        <div className="absolute inset-0"><ConstellationView data={data} onSelect={setReadingId} /></div>
+                                    ) : viewMode === 'folder' ? (
+                                        structure ? <FolderView structure={structure} data={data} onOpenItem={setReadingId} /> : <div className="p-8 text-center text-zinc-500"><p>No structure.</p><button onClick={runOrganizer} className="mt-4 bg-blue-600 px-4 py-2 rounded text-white">Organize</button></div>
+                                    ) : viewMode === 'calendar' ? (
                                         <CalendarView data={data} onOpenItem={setReadingId} onBatchSelect={batchSelect} selection={sel} />
                                     ) : (
-                                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-40">
-                                            {filteredData.length === 0 && (
-                                                <div className="col-span-full text-center text-zinc-600 mt-20 flex flex-col items-center">
-                                                    <Icon name="Brain" size={48} className="opacity-20 mb-4"/>
-                                                    <p>{search ? 'No results found.' : 'Memory is empty.'}</p>
-                                                </div>
-                                            )}
+                                        <div className="p-4 pb-40">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                             {filteredData.map(t => (
-                                                <div key={t.id} onClick={() => setReadingId(t.id)} className={`relative p-5 rounded-xl border transition-all cursor-pointer group active:scale-[0.98] ${sel.has(t.id)?'bg-blue-900/10 border-blue-500/50':'bg-zinc-900 border-zinc-800 hover:border-zinc-600'}`}>
+                                                <div key={t.id} onClick={() => setReadingId(t.id)} className={`relative p-5 rounded-xl border transition-all cursor-pointer group active:scale-[0.98] ${sel.has(t.id)?'bg-blue-900/10 border-blue-500/50':'bg-zinc-900 border-zinc-800 hover:border-zinc-600'} ${t.isArchived ? 'opacity-60 grayscale-[0.8]' : ''}`}>
                                                     <div className="flex justify-between mb-3 items-start">
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${t.type==='strategy'?'bg-blue-900/30 text-blue-400':t.type==='raw'?'text-zinc-500 bg-zinc-800':t.type==='refined'?'text-green-400 bg-green-900/20':'text-purple-400 bg-purple-900/20'}`}>{t.type}</span>
+                                                        <div className="flex gap-2">
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${t.type==='strategy'?'bg-blue-900/30 text-blue-400':t.type==='raw'?'text-zinc-500 bg-zinc-800':t.type==='refined'?'text-green-400 bg-green-900/20':'text-purple-400 bg-purple-900/20'}`}>{t.type}</span>
+                                                            {t.isArchived && <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-yellow-900/20 text-yellow-600 border border-yellow-900/30">Archived</span>}
+                                                        </div>
                                                         <div onClick={(e) => toggleSel(e, t.id)} className={`w-10 h-10 -mr-3 -mt-3 rounded-bl-xl rounded-tr-xl flex items-center justify-center transition-colors z-20 ${sel.has(t.id)?'bg-blue-500 text-white':'bg-transparent text-zinc-600'}`}>
                                                             {sel.has(t.id) ? <Icon name="CheckCircle" size={20} className="fill-current"/> : <div className="w-5 h-5 rounded-full border-2 border-zinc-700"></div>}
                                                         </div>
                                                     </div>
                                                     <div className="text-sm text-zinc-300 line-clamp-[6] leading-relaxed opacity-90 mb-2">{t.content}</div>
                                                     <div className="flex flex-wrap gap-1">
-                                                        {t.tags && t.tags.slice(0, 2).map(tag => (
-                                                            <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-500">#{tag}</span>
-                                                        ))}
-                                                        {t.tags && t.tags.length > 2 && <span className="text-[10px] px-1.5 py-0.5 text-zinc-600">+{t.tags.length - 2}</span>}
+                                                        {t.tags && t.tags.slice(0, 2).map(tag => (<span key={tag} className="text-[10px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-500">#{tag}</span>))}
                                                     </div>
                                                     <div className="absolute bottom-5 right-5 text-[10px] text-zinc-600">{new Date(t.createdAt).toLocaleDateString()}</div>
                                                 </div>
                                             ))}
+                                            </div>
+                                             {/* LOAD MORE BUTTON */}
+                                            {!search && viewMode === 'grid' && hasMore && (
+                                                <button onClick={loadMore} className="w-full py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded-xl font-bold hover:bg-zinc-800 hover:text-white transition-colors flex items-center justify-center gap-2 mt-4"><Icon name="ChevronDown"/> Load More Memories</button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1193,19 +1213,19 @@
                         )}
                     </div>
 
+                    {/* MOBILE NAV */}
                     <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-zinc-950 border-t border-zinc-800 flex justify-around items-center z-30 safe-bottom">
-                         <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'home' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'home' ? 'bg-zinc-800' : ''}`}><Icon name="Home" /></div><span className="text-[10px] font-bold">Base</span></button>
-                        <button onClick={() => setActiveTab('capture')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'capture' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'capture' ? 'bg-zinc-800' : ''}`}><Icon name="Pen" /></div><span className="text-[10px] font-bold">Capture</span></button>
-                        <button onClick={() => setActiveTab('memory')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'memory' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'memory' ? 'bg-zinc-800' : ''}`}><Icon name="Grid" /></div><span className="text-[10px] font-bold">Memory</span></button>
-                        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === 'profile' ? 'text-white' : 'text-zinc-600'}`}><div className={`p-1 rounded-full ${activeTab === 'profile' ? 'bg-zinc-800' : ''}`}><Icon name="User" /></div><span className="text-[10px] font-bold">Mirror</span></button>
+                         {['home','capture','memory','profile'].map(tab => (
+                             <button key={tab} onClick={() => setActiveTab(tab)} className={`flex flex-col items-center gap-1 p-2 w-full ${activeTab === tab ? 'text-white' : 'text-zinc-600'}`}>
+                                <div className={`p-1 rounded-full ${activeTab === tab ? 'bg-zinc-800' : ''}`}><Icon name={tab==='home'?'Home':tab==='capture'?'Pen':tab==='memory'?'Grid':'User'} /></div>
+                                <span className="text-[10px] font-bold capitalize">{tab}</span>
+                             </button>
+                         ))}
                     </div>
 
-                    {sel.size > 0 && activeTab === 'memory' && (
+                     {sel.size > 0 && activeTab === 'memory' && (
                         <div className="fixed bottom-24 md:bottom-8 left-4 right-4 md:left-auto md:right-8 md:w-96 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 z-50 animate-in slide-in-from-bottom-10 shadow-2xl">
-                             <div className="flex justify-between items-center mb-4">
-                                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{sel.size} Items Selected</span>
-                                <button onClick={deleteSelected} className="text-red-400 text-xs flex gap-1 font-bold bg-red-900/20 px-3 py-1 rounded-full"><Icon name="Trash2" size={14}/> Delete</button>
-                            </div>
+                             <div className="flex justify-between items-center mb-4"><span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{sel.size} Items Selected</span><button onClick={deleteSelected} className="text-red-400 text-xs flex gap-1 font-bold bg-red-900/20 px-3 py-1 rounded-full"><Icon name="Trash2" size={14}/> Delete</button></div>
                             <div className="grid grid-cols-4 gap-2">
                                 <button onClick={()=>runAI('synthesize')} className="flex flex-col items-center gap-1 p-2 bg-zinc-800 rounded-xl hover:bg-zinc-700 active:scale-95 transition-all"><Icon name="Sparkles" className="text-green-400"/><span className="text-[9px] font-bold text-zinc-300">Refine</span></button>
                                 <button onClick={()=>runAI('pattern')} className="flex flex-col items-center gap-1 p-2 bg-zinc-800 rounded-xl hover:bg-zinc-700 active:scale-95 transition-all"><Icon name="Brain" className="text-purple-400"/><span className="text-[9px] font-bold text-zinc-300">Pattern</span></button>
