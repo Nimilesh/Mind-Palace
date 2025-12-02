@@ -826,9 +826,22 @@
             const handleUpdateContext = () => { onUpdateContext(contextText); alert("Codex Updated"); };
              
             const renderSafe = (content) => {
-                if (typeof content === 'object') return JSON.stringify(content, null, 2);
-                return content;
-            };
+    if (typeof content === 'object') return JSON.stringify(content, null, 2);
+    try {
+        // Check if content is a JSON string masquerading as text
+        const parsed = JSON.parse(content);
+        if (typeof parsed === 'object') {
+            // Extract the "description" or relevant fields if possible
+            if (parsed.description) return parsed.description;
+            if (parsed.vector_prediction) return parsed.vector_prediction;
+            // Otherwise, format it nicely
+            return Object.entries(parsed).map(([k,v]) => `${k.replace(/_/g, ' ')}: ${v}`).join('\n\n');
+        }
+    } catch (e) {
+        // It's just normal text, return as is
+    }
+    return content;
+};
 
             const runMirror = async () => {
                 if (!apiKey) return alert("API Key Needed");
